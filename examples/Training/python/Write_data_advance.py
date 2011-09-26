@@ -22,24 +22,42 @@
 import my_omero_config as conf
 from omero.gateway import BlitzGateway
 from omero.rtypes import *
-from omero.model import *
+import os
 conn = BlitzGateway(conf.USERNAME, conf.PASSWORD, host=conf.HOST, port=conf.PORT)
 conn.connect()
+datasetId = 101
+projectId = 51
 
-# Let's set up an Image to delete (NB this image has no Pixel data etc)
-image = omero.model.ImageI()
-image.setName(omero.rtypes.rstring("test_delete"))
-image.setAcquisitionDate(omero.rtypes.rtime(2000000))
-image = conn.getUpdateService().saveAndReturnObject(image)
-imageId = image.getId().getValue()
-# OR, you could put the ID of an image you want to delte here:
-#imageId = 101
+# Create a new Dataset
 
+dataset = omero.model.DatasetI()
+dataset.setName(rstring("New Dataset"))
+dataset = conn.getUpdateService().saveAndReturnObject(dataset) 
+print "New dataset, Id:" , dataset.getId().getValue()
 
-# Delete Image
+dataset2 = omero.model.DatasetI()
+dataset2.setName(rstring("New Dataset2"))
+dataset2 = conn.getUpdateService().saveAndReturnObject(dataset2) 
+print "New dataset 2, Id:" , dataset2.getId().getValue()
 
-# You can delete a number of objects of the same type at the same time. In this case 'Image'
+# How to annotate multiple Datasets
 
-obj_ids = [imageId]
-# use deleteChildren=True if you are E.g. deleting a Dataset and you want to delete Images.
-conn.deleteObjects("Image", obj_ids, deleteAnns=True, deleteChildren=False)
+# you define objects you want to tag
+dataset_list = [dataset, dataset2]
+
+# create a tag
+tag = omero.model.TagAnnotationI()
+tag.setTextValue(rstring("new tag"))
+
+# build list of links
+link_list = list()
+for ds in dataset_list:
+    link = omero.model.DatasetAnnotationLinkI()
+    link.setParent(ds)
+    link.setChild(tag)
+    link_list.append(link)
+conn.getUpdateService().saveArray(link_list)
+
+# When you're done, close the session to free up server resources. 
+
+conn._closeSession()
