@@ -133,6 +133,15 @@
 
         $(function() 
             {
+                $("#id_experimenter").bind("change", function() {
+                    var exp_id = this.options[this.selectedIndex].value;
+                    $.post("{% url add_experimenters %}", { experimenters: exp_id },
+                        function(data) {
+                            $("#dataTree").jstree("refresh");
+                        }
+                    );
+                });
+
                 $("#left_panel_tabs").tabs({
                     select: function(event, ui) {
                         var url = $.data(ui.tab, 'load.tabs');
@@ -236,7 +245,7 @@
                                         url = "{% url load_data %}"+n.attr("rel").replace("-locked", "")+"/"+n.attr("id").split("-")[1]+"/";
                                     }
                                 } else {
-                                    url = "{% url load_data %}";
+                                    url = "{% url load_tree %}";
                                 }
                                 return url;
                             },
@@ -260,8 +269,19 @@
                         // This will prevent moving or creating any other type as a root node
                         "max_depth" : -1,
                         "max_children" : -1,
-                        "valid_children" : [ "experimenter" ],
+                        "valid_children" : [ "group", "experimenter" ],
                         "types" : {
+                            "group" : {
+                                "valid_children" : [ "experimenter" ],
+                                "icon" : {
+                                    "image" : '{% static "webclient/image/ledorange16.png" %}'
+                                },
+                                "create_node" : true,
+                                "start_drag" : false,
+                                "move_node" : false,
+                                "delete_node" : false,
+                                "remove" : false
+                            },
                             "experimenter" : {
                                 "valid_children" : [ "project", "project-locked", "dataset", "dataset-locked", "screen", "screen-locked", "plate", "plate-locked" ],
                                 "icon" : {

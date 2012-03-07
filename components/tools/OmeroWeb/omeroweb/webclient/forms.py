@@ -216,7 +216,7 @@ class UsersForm(forms.Form):
             user = None
         users = kwargs['initial']['users']
         
-        self.fields['experimenter'] = ExperimenterModelChoiceField(queryset=users, initial=user, widget=forms.Select(attrs={'onchange':'window.location.href=\''+reverse(viewname="load_template", args=[menu])+'?experimenter=\'+this.options[this.selectedIndex].value'}), required=False, empty_label=empty_label)
+        self.fields['experimenter'] = ExperimenterModelChoiceField(queryset=users, initial=user, widget=forms.Select(attrs={}), required=False, empty_label=empty_label)
         
         if users is None or len(users)<2:
             self.fields['experimenter'].widget.attrs['disabled'] = True

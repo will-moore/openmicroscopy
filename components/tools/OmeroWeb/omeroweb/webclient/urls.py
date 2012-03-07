@@ -43,6 +43,9 @@ urlpatterns = patterns('django.views.generic.simple',
     url( r'^login/$', views.login, name="weblogin" ),
     url( r'^logout/$', views.logout, name="weblogout" ),
     url( r'^active_group/$', views.change_active_group, name="change_active_group" ),
+
+    # update users and groups in the current context
+    url( r'^add_experimenters/$', views.add_experimenters, name="add_experimenters" ),
     
     # load basket
     url( r'^basket/empty/$', views.empty_basket, name="empty_basket"),
@@ -57,6 +60,7 @@ urlpatterns = patterns('django.views.generic.simple',
     
     # loading data    
     url( r'^load_data/(?:(?P<o1_type>((?i)project|dataset|image|screen|plate|well|orphaned))/)?(?:(?P<o1_id>[0-9]+)/)?(?:(?P<o2_type>((?i)dataset|image|plate|acquisition|well))/)?(?:(?P<o2_id>[0-9]+)/)?(?:(?P<o3_type>((?i)image|well))/)?(?:(?P<o3_id>[0-9]+)/)?$', views.load_data, name="load_data" ),    
+    url( r'^load_tree/$', views.load_tree, name="load_tree" ),
     
     # load history
     url( r'^load_calendar/(?:(\d{4})/(\d{1,2})/)?$', views.load_calendar, name="load_calendar"),

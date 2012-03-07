@@ -773,13 +773,65 @@ def load_data(request, o1_type=None, o1_id=None, o2_type=None, o2_id=None, o3_ty
         else:
             template = "webclient/data/containers.html"
 
-    context = {'nav':request.session['nav'], 'url':url, 'eContext':manager.eContext, 'manager':manager, 'form_well_index':form_well_index, 'index':index}
     
     t = template_loader.get_template(template)
     c = Context(request,context)
     logger.debug('TEMPLATE: '+template)
     return HttpResponse(t.render(c))
 
+
+@isUserConnected
+def load_tree(request, conn=None, **kwargs):
+    """
+    This loads data for the tree, via AJAX calls. 
+    Supports multiple Experimenters, as specified in the current request.session[context]
+    """
+    request.session.modified = True
+
+    # need to support multiple experimenters - currently we only support the current group
+    managers = []
+    ctx = request.session.get('context')
+    groupId = conn.getEventContext().groupId
+    if ctx is not None and groupId in ctx:
+        for eid in ctx[groupId]:
+            m = BaseContainer(conn)
+            m.listContainerHierarchy(eid)
+            managers.append(m)
+    else:
+        m = BaseContainer(conn)
+        m.listContainerHierarchy(conn.getEventContext().userId)
+        managers.append(m)
+
+    context = {'managers':managers}
+    template = "webclient/data/containers_tree.html"
+
+    t = template_loader.get_template(template)
+    c = Context(request,context)
+    logger.debug('TEMPLATE: '+template)
+    return HttpResponse(t.render(c))
+
+@isUserConnected
+def add_experimenters(request, conn=None, **kwargs):
+    """
+    Adds 'experimenters' from the request.POST to the current context.
+    This updates the request.session['experimenters'] list.
+    """
+
+    groupId = conn.getEventContext().groupId
+    userId = conn.getEventContext().userId
+    # store the 'active' experimenters for each group in a map of gId: set(eids)
+    if request.session.get('context') is None:
+        request.session['context'] = {groupId: set([userId])}
+    eids = request.POST.getlist("experimenters")
+    if groupId not in request.session['context']:
+        request.session['context'][groupId] = set()
+
+    for expId in eids:
+        request.session['context'][groupId].add(int(expId))
+    request.session.modified = True
+    return HttpResponse("OK")
+
+    
 @isUserConnected
 def load_searching(request, form=None, **kwargs):
     """
