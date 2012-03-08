@@ -789,21 +789,32 @@ def load_tree(request, conn=None, **kwargs):
     request.session.modified = True
 
     # need to support multiple experimenters - currently we only support the current group
-    managers = []
     ctx = request.session.get('context')
     groupId = conn.getEventContext().groupId
-    if ctx is not None and groupId in ctx:
-        for eid in ctx[groupId]:
-            m = BaseContainer(conn)
-            m.listContainerHierarchy(eid)
-            managers.append(m)
-    else:
-        m = BaseContainer(conn)
-        m.listContainerHierarchy(conn.getEventContext().userId)
-        managers.append(m)
+    userId = conn.getEventContext().userId
+    groups = []
+    if ctx is None:
+        ctx = {groupId: set([userId])}
+        request.session['context'] = {groupId: set([userId])}
+        request.session.modified = True
 
-    context = {'managers':managers}
-    template = "webclient/data/containers_tree.html"
+    for gid, eids in ctx.items():
+        experimenters = []
+        g = conn.getObject("ExperimenterGroup", gid)
+        if g is not None:
+            for eid in eids:
+                m = BaseContainer(conn)
+                m.listContainerHierarchy(eid)
+                experimenters.append(m)
+        groups.append({"group":g, "experimenters":experimenters})
+
+    # tree is rooted in group if user is in more than 1 group
+    if len(conn.getEventContext().memberOfGroups) > 1:
+        context = {'groups':groups}
+        template = "webclient/data/groups_tree.html"
+    else:
+        context = {"grp": groups[0]}
+        template = "webclient/data/experimenters_tree.html"
 
     t = template_loader.get_template(template)
     c = Context(request,context)

@@ -1,0 +1,12 @@
+
+
+<ul>
+{% for grp in groups %}
+    <li id="group-{{ grp.group.id }}" rel="group">
+        <a href="#">{{ grp.group.getName }}</a>
+
+        {% include "webclient/data/experimenters_tree.html" %}
+    
+    </li>
+{% endfor %}
+</ul>

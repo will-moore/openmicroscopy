@@ -22,9 +22,11 @@
 {% endcomment %}
 
 
-{% for manager in managers %}
+
+{% for manager in grp.experimenters %}        
+
 <ul>
-    <li id="experimenter-0" rel="experimenter"><a href="#">{{ manager.experimenter.getFullName }}</a>
+    <li id="experimenter-{{ manager.experimenter.id }}" rel="experimenter"><a href="#">{{ manager.experimenter.getFullName }}</a>
         <ul>
             {% for c in manager.containers.projects %}
             <li id='project-{{ c.id }}' rel="project{% if not c.isOwned %}-locked{% endif %}">
@@ -104,7 +106,3 @@
 </ul>
 
 {% endfor %}
-
-
-
-
