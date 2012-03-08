@@ -948,7 +948,7 @@
 
 {% block left %}
 
-	
+    
 
 
     <div id="left_panel_tabs" class="absolute_fill">
@@ -970,18 +970,21 @@
 	        </ul>
 		</div>
 
-		<div id="navigator">
-			<a href="#" id="back">Back</a>
-			<a href="#" id="forward">Back</a>
-			<dl>
-				<dt>Groups</dt>
-			</dl>
-			<a href="#" id="settings">Settings</a>
-		</div>
-		
-		
-		
-		
+
+        <div id="navigator">
+            <a href="#" id="back">Back</a>
+            <a href="#" id="forward">Back</a>
+            
+            <dl>
+            <select>
+                <option value="all_groups">All Groups</option>
+                {% for g in eContext.allGroups %}
+                    <option value="{{ g.id }}">{{ g.getName }}</option>
+                {% endfor %}
+            </select>
+            </dl>
+            <a href="#" id="settings">Settings</a>
+        </div>
 
 
             <!-- toolbar above tree -->
