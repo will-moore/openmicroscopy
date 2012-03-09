@@ -976,10 +976,10 @@
             <a href="#" id="forward">Back</a>
             
             <dl>
-            <select>
-                <option value="all_groups">All Groups</option>
-                {% for g in eContext.allGroups %}
-                    <option value="{{ g.id }}">{{ g.getName }}</option>
+            <select id="tree_rebase_select">
+                <option value="current_root">{{ tree_root }}</option>
+                {% for p in tree_root_parents %}
+                    <option value="p">{{ p }}</option>
                 {% endfor %}
             </select>
             </dl>

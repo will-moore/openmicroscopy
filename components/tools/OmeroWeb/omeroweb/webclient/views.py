@@ -615,7 +615,7 @@ def load_template(request, menu, **kwargs):
     except AttributeError, x:
         logger.error(traceback.format_exc())
         return handlerInternalError(x)
-    
+    """
     form_users = None
     filter_user_id = None
     
@@ -650,13 +650,23 @@ def load_template(request, menu, **kwargs):
         form_users = UsersForm(initial={'users': users, 'empty_label':empty_label, 'menu':menu})
             
     form_active_group = ActiveGroupForm(initial={'activeGroup':manager.eContext['context'].groupId, 'mygroups': manager.eContext['allGroups'], 'url':url})
+    """
+    context = {'nav':request.session['nav'], 'url':url, 'init':init, 'eContext':manager.eContext} 
+    # context['form_active_group'] = form_active_group
+    # context['form_users'] = form_users
     
-    context = {'nav':request.session['nav'], 'url':url, 'init':init, 'eContext':manager.eContext, 'form_active_group':form_active_group, 'form_users':form_users}
+    # Need to define the current "root" of the jsTree and it's ancestors to allow tree rebasing
+    tree_root = request.session.get('tree_root')
+    if tree_root is None:
+        context['tree_root'] = "All Groups"
+        context['tree_root_parents'] = []
     
     t = template_loader.get_template(template)
     c = Context(request,context)
     logger.debug('TEMPLATE: '+template)
     return HttpResponse(t.render(c))
+
+
 
 @isUserConnected
 def load_data(request, o1_type=None, o1_id=None, o2_type=None, o2_id=None, o3_type=None, o3_id=None, **kwargs):
