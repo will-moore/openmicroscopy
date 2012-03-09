@@ -22,10 +22,8 @@
 {% endcomment %}
 
 
-
-{% for manager in grp.experimenters %}        
-
 <ul>
+{% for manager in group.experimenters %}
     <li id="experimenter-{{ manager.experimenter.id }}" rel="experimenter"><a href="#">{{ manager.experimenter.getFullName }}</a>
         <ul>
             {% for c in manager.containers.projects %}
@@ -103,6 +101,5 @@
             
         </ul>
     </li>
-</ul>
-
 {% endfor %}
+</ul>

@@ -1,9 +1,9 @@
 
 
 <ul>
-{% for grp in groups %}
+{% for group in groups %}
     <li id="group-{{ grp.group.id }}" rel="group">
-        <a href="#">{{ grp.group.getName }}</a>
+        <a href="#">{{ group.group.getName }}</a>
 
         {% include "webclient/data/experimenters_tree.html" %}
     
