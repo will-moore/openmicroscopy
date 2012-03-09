@@ -441,8 +441,8 @@ class BlitzObjectWrapper (object):
         @rtype:     Boolean
         @return:    see above
         """
-        g = self._obj.details.group or self._obj.details 
-        return g.permissions.isWorldRead()
+        d = self._obj.details 
+        return d.permissions.isWorldRead()
     
     def isShared(self):
         """
@@ -453,8 +453,10 @@ class BlitzObjectWrapper (object):
                     object permissions allow group read.
         """
         if not self.isPublic():
-            g = self._obj.details.group or self._obj.details 
-            return g.permissions.isGroupRead()
+            
+            d = self._obj.details
+            #d = self._obj.details.group and self._obj.details.group.details or self._obj.details
+            return d.permissions.isGroupRead()
         return False
     
     def isPrivate(self):
@@ -466,8 +468,8 @@ class BlitzObjectWrapper (object):
                     permissions allow user to read.
         """
         if not self.isPublic() and not self.isShared():
-            g = self._obj.details.group or self._obj.details 
-            return g.permissions.isUserRead()
+            d = self._obj.details.group and self._obj.details.group.details or self._obj.details
+            return d.permissions.isUserRead()
         return False
     
     def isReadOnly(self):
@@ -479,12 +481,12 @@ class BlitzObjectWrapper (object):
                     True if shared but not group writable
                     True if private but not user writable
         """
-        g = self._obj.details.group or self._obj.details 
+        d = self._obj.details
         if self.isPublic() and not g.permissions.isWorldWrite():
             return True
-        elif self.isShared() and not g.permissions.isGroupWrite():
+        elif self.isShared() and not d.permissions.isGroupWrite():
             return True
-        elif self.isPrivate() and not g.permissions.isUserWrite():
+        elif self.isPrivate() and not d.permissions.isUserWrite():
             return True
         return False
     
