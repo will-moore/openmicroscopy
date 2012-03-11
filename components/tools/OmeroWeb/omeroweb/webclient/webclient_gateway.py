@@ -520,7 +520,7 @@ class OmeroWebGateway (omero.gateway.BlitzGateway):
             sql += " and im.details.owner.id=:eid"
         sql+=" order by im.name ASC"
         
-        for e in q.findAllByQuery(sql, p):
+        for e in q.findAllByQuery(sql, p, self.CONFIG['SERVICE_OPTS']):
             kwargs = {'link': omero.gateway.BlitzObjectWrapper(self, e.copyDatasetLinks()[0])}
             yield ImageWrapper(self, e, None, **kwargs)
     

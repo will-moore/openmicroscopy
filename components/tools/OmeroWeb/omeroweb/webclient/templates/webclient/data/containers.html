@@ -43,6 +43,41 @@
         String.prototype.capitalize = function() {
             return this.charAt(0).toUpperCase() + this.slice(1);
         }
+        
+        var rebase_tree = function(a) {
+            var $node = a.parent();
+            var node_id = $node.attr('id');     // E.g. 'group-123'
+
+            var dataTree = $.jstree._focused();
+
+            // traverse tree UP from node, list ancestors...
+            var ancestors = [];
+            while($node != -1) {
+                var node_name = $node.children("a").children(".node_name").text();
+                ancestors.push( [node_name, $node.attr('id')]);
+                $node = dataTree._get_parent($node);
+            }
+            // starting at the 'root', add children as options to the rebase select
+            var $tree_rebase_select = $("#tree_rebase_select");
+            for (var i=ancestors.length-1; i>=0; i--) {
+                $tree_rebase_select.prepend("<option value='"+ ancestors[i][1] + "'>"+ ancestors[i][0] + "</option>");
+            }
+            // select the last child (the one we just clicked on)
+            $tree_rebase_select.get(0).selectedIndex = 0;
+
+            // need to say which group we're under (E.g. if 'experimenter' is new root)
+            var group_index = $tree_rebase_select.children("option").length - 1;
+            console.log("group_index", group_index);
+            var group_id = $(":nth-child("+group_index+")", $tree_rebase_select).attr("value");
+            console.log("group-id", group_id);
+            var gId = group_id.split("-")[1];
+            $.post("{% url set_tree_root %}", { tree_root: node_id, group_id: gId },
+                function(data) {
+                    $("#dataTree").jstree("refresh");
+                }
+            );
+
+        }
 
         var handleDelete = function() {
             var selected = $.jstree._focused().get_selected();
@@ -133,9 +168,9 @@
 
         $(function() 
             {
-                $("#id_experimenter").bind("change", function() {
-                    var exp_id = this.options[this.selectedIndex].value;
-                    $.post("{% url add_experimenters %}", { experimenters: exp_id },
+                $("#tree_rebase_select").bind("change", function() {
+                    var new_tree_root = this.options[this.selectedIndex].value;
+                    $.post("{% url set_tree_root %}", { tree_root: new_tree_root },
                         function(data) {
                             $("#dataTree").jstree("refresh");
                         }
@@ -269,7 +304,7 @@
                         // This will prevent moving or creating any other type as a root node
                         "max_depth" : -1,
                         "max_children" : -1,
-                        "valid_children" : [ "group", "experimenter" ],
+                        "valid_children" : [ "group", "experimenter", "project", "project-locked", "dataset", "dataset-locked" ],
                         "types" : {
                             "group" : {
                                 "valid_children" : [ "experimenter" ],
@@ -734,6 +769,9 @@
                     if ($(this).parent().attr('rel')=='image') {
                         openPopup("{% url web_image_viewer 0 %}".replace('0', $(this).parent().attr('id').split("-")[1]));
                     }
+                    else {
+                        rebase_tree($(this));
+                    }
                 })
                 .bind("select_node.jstree", function (e, data) {
                     buttonsShowHide(data.inst.data.ui.last_selected, data.inst);
@@ -979,7 +1017,7 @@
             <select id="tree_rebase_select">
                 <option value="current_root">{{ tree_root }}</option>
                 {% for p in tree_root_parents %}
-                    <option value="p">{{ p }}</option>
+                    <option value="{{ p.id }}">{{ p.label }}</option>
                 {% endfor %}
             </select>
             </dl>
