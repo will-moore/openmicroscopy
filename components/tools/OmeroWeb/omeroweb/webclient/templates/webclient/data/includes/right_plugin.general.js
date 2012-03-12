@@ -63,9 +63,10 @@ $(function () {
                 // orphaned
                 if (oid.indexOf("orphaned")>=0) {
                     $metadata_general.html('<p>This is virtual container with orphaned images. These images are not linked anywhere. Just drag them to the selected container.</p>');
-                    //return;
-                // experimenter
+                } else if (oid.indexOf("group")>=0) {
+                    // nothing to show yet
                 } else if (oid.indexOf("experimenter")>=0) {
+                    // experimenter
                     $metadata_general.html('<p>'+selected.children().eq(1).text()+'</p>');
                 // everything else
                 } else {
