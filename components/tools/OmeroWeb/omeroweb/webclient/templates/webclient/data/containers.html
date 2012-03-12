@@ -71,7 +71,7 @@
             var group_id = $(":nth-child("+group_index+")", $tree_rebase_select).attr("value");
             console.log("group-id", group_id);
             var gId = group_id.split("-")[1];
-            $.post("{% url set_tree_root %}", { tree_root: node_id, group_id: gId },
+            $.post("{% url set_tree_root %}", { tree_root: node_id, node_name: ancestors[0][0], group_id: gId },
                 function(data) {
                     $("#dataTree").jstree("refresh");
                 }
@@ -170,7 +170,29 @@
             {
                 $("#tree_rebase_select").bind("change", function() {
                     var new_tree_root = this.options[this.selectedIndex].value;
-                    $.post("{% url set_tree_root %}", { tree_root: new_tree_root },
+                    var $tree_rebase_select = $(this);
+
+                    // need to remove any options BEFORE the node we just clicked on
+                    var before_node = true;
+                    $("#tree_rebase_select option").each(function() {
+                        console.log($(this).attr("value"));
+                        if ($(this).attr("value") == new_tree_root) {
+                            before_node = false;
+                        }
+                        if (before_node) $(this).remove();
+                    });
+
+                    var group_index = $tree_rebase_select.children("option").length - 1;
+                    console.log("group_index", group_index);
+                    if (group_index > 0) {
+                        var group_id = $(":nth-child("+group_index+")", $tree_rebase_select).attr("value");
+                        console.log("group-id", group_id);
+                        var gId = group_id.split("-")[1];
+                    } else {
+                        var gId = null;
+                    }
+
+                    $.post("{% url set_tree_root %}", { tree_root: new_tree_root, group_id: gId },
                         function(data) {
                             $("#dataTree").jstree("refresh");
                         }
@@ -207,9 +229,11 @@
                                 toolbar_config['adddataset'] = true;
                             } else if(selected.attr("id").indexOf("dataset")>=0) {
                                 toolbar_config['copy'] = true;
-                                if (selected.parent().parent().length > 0 && selected.parent().parent().attr('rel').replace("-locked", "").indexOf("experimenter") < 0) {
-                                    toolbar_config["cut"] = true;
-                                    toolbar_config["unlink"] = true;
+                                if (selected.parent().parent().length > 0 && selected.parent().parent().attr('rel')) {
+                                    if (selected.parent().parent().attr('rel').replace("-locked", "").indexOf("experimenter") < 0) {
+                                        toolbar_config["cut"] = true;
+                                        toolbar_config["unlink"] = true;
+                                    }
                                 }
                             } else if(selected.attr("id").indexOf("image")>=0) {
                                 toolbar_config['basket'] = true;
@@ -274,7 +298,7 @@
                             "url" : function(n) {
                                 if (n.attr) {
                                     var parent = this._get_parent(n);
-                                    if ($.inArray($(parent).attr("rel").replace("-locked", ""), ["project", "screen"]) > -1) {
+                                    if ($(parent).attr("rel") && ($.inArray($(parent).attr("rel").replace("-locked", ""), ["project", "screen"])) > -1) {
                                         url = "{% url load_data %}"+$(parent).attr("rel").replace("-locked", "")+"/"+$(parent).attr("id").split("-")[1]+"/"+n.attr("rel").replace("-locked", "")+"/"+n.attr("id").split("-")[1]+"/";
                                     } else {
                                         url = "{% url load_data %}"+n.attr("rel").replace("-locked", "")+"/"+n.attr("id").split("-")[1]+"/";
@@ -304,7 +328,7 @@
                         // This will prevent moving or creating any other type as a root node
                         "max_depth" : -1,
                         "max_children" : -1,
-                        "valid_children" : [ "group", "experimenter", "project", "project-locked", "dataset", "dataset-locked" ],
+                        "valid_children" : [ "group", "experimenter", "project", "project-locked", "dataset", "dataset-locked", "image", "image-locked" ],
                         "types" : {
                             "group" : {
                                 "valid_children" : [ "experimenter" ],
@@ -1015,7 +1039,7 @@
             
             <dl>
             <select id="tree_rebase_select">
-                <option value="current_root">{{ tree_root }}</option>
+                <option value="{{ tree_root_id }}">{{ tree_root_name }}</option>
                 {% for p in tree_root_parents %}
                     <option value="{{ p.id }}">{{ p.label }}</option>
                 {% endfor %}

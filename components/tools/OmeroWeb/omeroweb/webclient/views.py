@@ -664,10 +664,12 @@ def load_template(request, menu, **kwargs):
     # Need to define the current "root" of the jsTree and it's ancestors to allow tree rebasing
     tree_root = request.session.get('tree_root')
     if tree_root is None:
-        context['tree_root'] = "All Groups"
+        context['tree_root_id'] = ""
+        context['tree_root_name'] = "All Groups"
         context['tree_root_parents'] = []
     else:
-        context['tree_root'] = tree_root["root_id"]
+        context['tree_root_id'] = tree_root["root_id"]
+        context['tree_root_name'] = 'node_name' in tree_root and tree_root['node_name'] or tree_root["root_id"]
         context['tree_root_parents'] = [{"id":"","label":"All Groups"}]
     
     t = template_loader.get_template(template)
@@ -861,7 +863,6 @@ def load_tree(request, conn=None, **kwargs):
     # If we're basing our tree on a single GROUP...
     elif dtype == "group":
         g = conn.getObject("ExperimenterGroup", oid)
-        print "load_tree for group", g
         eids = []
         # use the user's preference for experimenters in the group (if set)
         if oid in tree_groups:
@@ -871,7 +872,6 @@ def load_tree(request, conn=None, **kwargs):
             eids = [e.id for e in conn.containedExperimenters(oid)]
         groups = []
         experimenters = []
-        print eids
         for eid in eids:
             m = BaseContainer(conn)
             m.listContainerHierarchy(eid)   # load Projects and Datasets for each Experimenter
@@ -882,12 +882,20 @@ def load_tree(request, conn=None, **kwargs):
         template = "webclient/data/experimenters_tree.html"
     elif dtype == "experimenter":
         group_filter = tree_root["group_id"]
-        print "group_filter", group_filter
         conn.CONFIG['SERVICE_OPTS']['omero.group'] = str(group_filter)
         m = BaseContainer(conn)
         m.listContainerHierarchy(oid)   # load Projects and Datasets for root Experimenter
         context['manager'] = m
         template = "webclient/data/projects_tree.html"
+    elif dtype == "project":
+        # list datasets in project
+        context['c'] = conn.getObject("Project", oid)
+        template = "webclient/data/datasets_tree.html"
+    elif dtype == "dataset":
+        m = BaseContainer(conn)
+        m.listImagesInDataset(oid)
+        context['manager'] = m
+        template = "webclient/data/images_tree.html"
 
     # NB: because the conn will be used to call .countChildren() on all objects in the tree,
     # we have to make sure this is not restricted by the wrong group!
@@ -914,6 +922,10 @@ def set_tree_root(request, conn=None, **kwargs):
     group_id = request.POST.get('group_id')
     if group_id is not None and len(group_id) > 0:
         request.session['tree_root']['group_id'] = group_id
+    # Label for display (see load_template())
+    node_name = request.POST.get('node_name')
+    if node_name is not None and len(node_name) > 0:
+        request.session['tree_root']['node_name'] = node_name
     request.session.modified = True
     return HttpResponse("OK")
     

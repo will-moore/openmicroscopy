@@ -32,18 +32,9 @@
             {% endif %}
         </a>
         {% if c.countChildren_cached %}
-        <ul>    
-            {% for d in c.listChildren %}
-                <li id='dataset-{{ d.id }}' rel="dataset{% if not d.isOwned %}-locked{% endif %}" {% if d.countChildren_cached %}class="jstree-closed"{% endif %}>
-                    <a href="#">
-                        <span class="node_name">{{ d.name|truncatebefor:"35" }}</span>
-                        {% if d.countChildren_cached %}
-                            <span class="children_count" id="counter-dataset-{{ d.id }}">{{ d.countChildren_cached}}</span>
-                        {% endif %}
-                    </a>
-                </li>
-            {% endfor %}
-        </ul>
+
+            {% include "webclient/data/datasets_tree.html" %}
+
         {% endif %}
     </li> 
     {% endfor %}
