@@ -916,16 +916,17 @@ def set_tree_root(request, conn=None, **kwargs):
     tree_root = request.POST.get('tree_root')
     if tree_root is not None and len(tree_root) > 0:
         request.session['tree_root'] = {"root_id": tree_root}
+        
+        # if new root is experimenter, we need to know which group!
+        group_id = request.POST.get('group_id')
+        if group_id is not None and len(group_id) > 0:
+            request.session['tree_root']['group_id'] = group_id
+        # Label for display (see load_template())
+        node_name = request.POST.get('node_name')
+        if node_name is not None and len(node_name) > 0:
+            request.session['tree_root']['node_name'] = node_name
     else:
         request.session['tree_root'] = None
-    # if new root is experimenter, we need to know which group!
-    group_id = request.POST.get('group_id')
-    if group_id is not None and len(group_id) > 0:
-        request.session['tree_root']['group_id'] = group_id
-    # Label for display (see load_template())
-    node_name = request.POST.get('node_name')
-    if node_name is not None and len(node_name) > 0:
-        request.session['tree_root']['node_name'] = node_name
     request.session.modified = True
     return HttpResponse("OK")
     

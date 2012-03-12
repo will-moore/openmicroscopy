@@ -24,13 +24,13 @@
 
 <ul>
 {% for group in groups %}
-    <li id="group-{{ group.group.id }}" rel="group">
+    <li id="group-{{ group.group.id }}" rel="group_{{ group.group.getPermissionsAsString }}">
         <a href="#">
             <span class="node_name">{{ group.group.getName }}</span>
         </a>
 
         {% include "webclient/data/experimenters_tree.html" %}
-    
+
     </li>
 {% endfor %}
 </ul>

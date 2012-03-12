@@ -330,10 +330,32 @@
                         "max_children" : -1,
                         "valid_children" : [ "group", "experimenter", "project", "project-locked", "dataset", "dataset-locked", "image", "image-locked" ],
                         "types" : {
-                            "group" : {
+                            "group_rw----" : {
                                 "valid_children" : [ "experimenter" ],
                                 "icon" : {
-                                    "image" : '{% static "webclient/image/ledorange16.png" %}'
+                                    "image" : '{% static "webgateway/img/nuvola_ledred16.png" %}'
+                                },
+                                "create_node" : true,
+                                "start_drag" : false,
+                                "move_node" : false,
+                                "delete_node" : false,
+                                "remove" : false
+                            },
+                            "group_rwr---" : {
+                                "valid_children" : [ "experimenter" ],
+                                "icon" : {
+                                    "image" : '{% static "webgateway/img/nuvola_ledorange_readOnly16.png" %}'
+                                },
+                                "create_node" : true,
+                                "start_drag" : false,
+                                "move_node" : false,
+                                "delete_node" : false,
+                                "remove" : false
+                            },
+                            "group_rwrw--" : {
+                                "valid_children" : [ "experimenter" ],
+                                "icon" : {
+                                    "image" : '{% static "webgateway/img/nuvola_ledorange16.png" %}'
                                 },
                                 "create_node" : true,
                                 "start_drag" : false,
