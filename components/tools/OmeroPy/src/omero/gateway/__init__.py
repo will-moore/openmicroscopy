@@ -482,14 +482,24 @@ class BlitzObjectWrapper (object):
                     True if private but not user writable
         """
         d = self._obj.details
-        if self.isPublic() and not g.permissions.isWorldWrite():
+        if self.isPublic() and not d.permissions.isWorldWrite():
             return True
         elif self.isShared() and not d.permissions.isGroupWrite():
             return True
         elif self.isPrivate() and not d.permissions.isUserWrite():
             return True
         return False
-    
+
+    def getPermissionsAsString(self):
+        """ Returns the permissions of the object as String E.g. 'rwrw--' """
+
+        perms = self._obj.details.permissions
+        perms_str = str(perms)
+        if perms_str in ("rw----", "rwr---", "rwrw--", "rwrwr-", "rwrwrw"):
+            return perms_str
+        else:
+            logger.debug("getPermissionsAsString() '%s' not recognised" % perms_str)
+
     def countChildren (self):
         """
         Counts available number of child objects.
