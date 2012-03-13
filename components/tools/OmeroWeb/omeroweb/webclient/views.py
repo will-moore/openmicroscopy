@@ -838,8 +838,6 @@ def load_tree(request, conn=None, **kwargs):
         for g in grps:
             eids = [gemap.child.id.val for gemap in g.copyGroupExperimenterMap()]
             tree_groups[g.id] = set(eids)
-        request.session['tree_groups'] = tree_groups
-        request.session.modified = True
 
     # If no root has been set, we show groups, experimenters etc as specified by 'tree_groups'
     if tree_root is None:
