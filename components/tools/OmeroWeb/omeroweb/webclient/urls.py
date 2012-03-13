@@ -46,7 +46,6 @@ urlpatterns = patterns('django.views.generic.simple',
 
     # update users and groups in the current context
     url( r'^add_experimenters/$', views.add_experimenters, name="add_experimenters" ),
-    url( r'^set_tree_root/$', views.set_tree_root, name="set_tree_root" ),
     
     # load basket
     url( r'^basket/empty/$', views.empty_basket, name="empty_basket"),

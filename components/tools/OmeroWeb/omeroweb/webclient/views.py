@@ -660,18 +660,7 @@ def load_template(request, menu, **kwargs):
     context = {'nav':request.session['nav'], 'url':url, 'init':init, 'eContext':manager.eContext} 
     # context['form_active_group'] = form_active_group
     # context['form_users'] = form_users
-    
-    # Need to define the current "root" of the jsTree and it's ancestors to allow tree rebasing
-    tree_root = request.session.get('tree_root')
-    if tree_root is None:
-        context['tree_root_id'] = ""
-        context['tree_root_name'] = "All Groups"
-        context['tree_root_parents'] = []
-    else:
-        context['tree_root_id'] = tree_root["root_id"]
-        context['tree_root_name'] = 'node_name' in tree_root and tree_root['node_name'] or tree_root["root_id"]
-        context['tree_root_parents'] = [{"id":"","label":"All Groups"}]
-    
+
     t = template_loader.get_template(template)
     c = Context(request,context)
     logger.debug('TEMPLATE: '+template)
@@ -806,8 +795,6 @@ def load_data(request, o1_type=None, o1_id=None, o2_type=None, o2_id=None, o3_ty
 def load_tree(request, conn=None, **kwargs):
     """
     This supplies data for the tree, via AJAX calls.
-    The tree may be rooted on a specific Group, Experimenter, Project or Dataset if 'tree_root' is
-    set in session, otherwise the root will show multiple Groups.
     The Groups and Experimenters at the base of the tree may be filtered according to 'tree_groups' in session.
     """
 
@@ -817,15 +804,6 @@ def load_tree(request, conn=None, **kwargs):
     # we may store the user's preference for which groups and experimenters to show in tree
     tree_groups = request.session.get('tree_groups')
 
-    # we may also store the user's current tree root node (experimentergroup, experimenter, project or dataset). E.g. "experimenter-3"
-    tree_root = request.session.get('tree_root')
-    if tree_root is not None:
-        try:
-            dtype, oid = tree_root["root_id"].split("-")
-        except:
-            tree_root = None
-    else:
-        tree_root = None
 
     context = {}
 
@@ -839,61 +817,23 @@ def load_tree(request, conn=None, **kwargs):
             eids = [gemap.child.id.val for gemap in g.copyGroupExperimenterMap()]
             tree_groups[g.id] = set(eids)
 
-    # If no root has been set, we show groups, experimenters etc as specified by 'tree_groups'
-    if tree_root is None:
-        grps = grps is not None and grps or list(conn.getObjects("ExperimenterGroup", tree_groups.keys()))
-        groups = []
-        for g in grps:
-            conn.CONFIG['SERVICE_OPTS']['omero.group'] = str(g.getId())
-            experimenters = []
-            #if g.id != groupId:         # TODO - currently we can only get data for our current group
-            #    groups.append({"group":g, "experimenters":[]})
-            #    continue
-            for eid in tree_groups[g.id]:
-                m = BaseContainer(conn)
-                m.listContainerHierarchy(eid)   # load Projects and Datasets for each Experimenter
-                experimenters.append(m)
-            experimenters.sort(key=lambda x: x.experimenter.getOmeName().lower())
-            groups.append({"group":g, "experimenters":experimenters})
-        groups.sort(key=lambda x: x['group'].getName().lower())
-        context['groups'] = groups
-        template = "webclient/data/groups_tree.html"
-    # If we're basing our tree on a single GROUP...
-    elif dtype == "group":
-        g = conn.getObject("ExperimenterGroup", oid)
-        eids = []
-        # use the user's preference for experimenters in the group (if set)
-        if oid in tree_groups:
-            eids = tree_groups[oid]
-        # ..otherwise show all experimenters for this group
-        else:
-            eids = [e.id for e in conn.containedExperimenters(oid)]
-        groups = []
+    grps = grps is not None and grps or list(conn.getObjects("ExperimenterGroup", tree_groups.keys()))
+    groups = []
+    for g in grps:
+        conn.CONFIG['SERVICE_OPTS']['omero.group'] = str(g.getId())
         experimenters = []
-        for eid in eids:
+        #if g.id != groupId:         # TODO - currently we can only get data for our current group
+        #    groups.append({"group":g, "experimenters":[]})
+        #    continue
+        for eid in tree_groups[g.id]:
             m = BaseContainer(conn)
             m.listContainerHierarchy(eid)   # load Projects and Datasets for each Experimenter
             experimenters.append(m)
         experimenters.sort(key=lambda x: x.experimenter.getOmeName().lower())
-        # the html will not show the root node (this is )
-        context["group"] = {"group":g, "experimenters":experimenters}
-        template = "webclient/data/experimenters_tree.html"
-    elif dtype == "experimenter":
-        group_filter = tree_root["group_id"]
-        conn.CONFIG['SERVICE_OPTS']['omero.group'] = str(group_filter)
-        m = BaseContainer(conn)
-        m.listContainerHierarchy(oid)   # load Projects and Datasets for root Experimenter
-        context['manager'] = m
-        template = "webclient/data/projects_tree.html"
-    elif dtype == "project":
-        # list datasets in project
-        context['c'] = conn.getObject("Project", oid)
-        template = "webclient/data/datasets_tree.html"
-    elif dtype == "dataset":
-        m = BaseContainer(conn)
-        m.listImagesInDataset(oid)
-        context['manager'] = m
-        template = "webclient/data/images_tree.html"
+        groups.append({"group":g, "experimenters":experimenters})
+    groups.sort(key=lambda x: x['group'].getName().lower())
+    context['groups'] = groups
+    template = "webclient/data/groups_tree.html"
 
     # NB: because the conn will be used to call .countChildren() on all objects in the tree,
     # we have to make sure this is not restricted by the wrong group!
@@ -904,31 +844,6 @@ def load_tree(request, conn=None, **kwargs):
     return HttpResponse(t.render(c))
 
 
-@isUserConnected
-def set_tree_root(request, conn=None, **kwargs):
-    """
-    Rebases the tree generated by load_tree() according to the node specified by
-    request.POST.get('tree_node').
-    """
-    
-    tree_root = request.POST.get('tree_root')
-    if tree_root is not None and len(tree_root) > 0:
-        request.session['tree_root'] = {"root_id": tree_root}
-        
-        # if new root is experimenter, we need to know which group!
-        group_id = request.POST.get('group_id')
-        if group_id is not None and len(group_id) > 0:
-            request.session['tree_root']['group_id'] = group_id
-        # Label for display (see load_template())
-        node_name = request.POST.get('node_name')
-        if node_name is not None and len(node_name) > 0:
-            request.session['tree_root']['node_name'] = node_name
-    else:
-        request.session['tree_root'] = None
-    request.session.modified = True
-    return HttpResponse("OK")
-    
-    
 @isUserConnected
 def add_experimenters(request, conn=None, **kwargs):
     """
