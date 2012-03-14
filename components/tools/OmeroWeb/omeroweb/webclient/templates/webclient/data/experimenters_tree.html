@@ -23,14 +23,13 @@
 
 
 <ul>
-{% for manager in group.experimenters %}
-    <li id="experimenter-{{ manager.experimenter.id }}" rel="experimenter">
+{% for e in experimenters %}
+    {% if e.show %}
+    <li id="experimenter-{{ e.id }}-group-{{ group_id }}" rel="experimenter">
         <a href="#">
-            <span class="node_name">{{ manager.experimenter.getFullName }}</span>
+            <span class="node_name">{{ e.name }}</span>
         </a>
-        
-        {% include "webclient/data/projects_tree.html" %}
-        
     </li>
+    {% endif %}
 {% endfor %}
 </ul>

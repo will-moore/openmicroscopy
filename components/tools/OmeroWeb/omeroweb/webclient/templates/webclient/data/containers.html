@@ -232,13 +232,22 @@
                             "url" : function(n) {
                                 if (n.attr) {
                                     var parent = this._get_parent(n);
-                                    if ($(parent).attr("rel") && ($.inArray($(parent).attr("rel").replace("-locked", ""), ["project", "screen"])) > -1) {
-                                        url = "{% url load_data %}"+$(parent).attr("rel").replace("-locked", "")+"/"+$(parent).attr("id").split("-")[1]+"/"+n.attr("rel").replace("-locked", "")+"/"+n.attr("id").split("-")[1]+"/";
+                                    var rel = $(parent).attr("rel") && $(parent).attr("rel").replace("-locked", "");
+                                    if (rel) {
+                                        if (($.inArray(rel, ["project", "screen"])) > -1) {
+                                            url = "{% url load_data %}"+$(parent).attr("rel").replace("-locked", "")+"/"+$(parent).attr("id").split("-")[1]+"/"+n.attr("rel").replace("-locked", "")+"/"+n.attr("id").split("-")[1]+"/";
+                                        } else {
+                                            url = "{% url load_data %}"+n.attr("rel").replace("-locked", "")+"/"+n.attr("id").split("-")[1]+"/";
+                                        }
+                                        return url
                                     } else {
-                                        url = "{% url load_data %}"+n.attr("rel").replace("-locked", "")+"/"+n.attr("id").split("-")[1]+"/";
+                                        var rel = n.attr("rel").replace("-locked", "");
+                                        if (rel.indexOf("group") > -1){
+                                            url = "/webclient/load_experimenters/" +n.attr("id").split("-")[1]+"/";
+                                        }
                                     }
                                 } else {
-                                    url = "{% url load_tree %}";
+                                    url = "{% url load_groups %}";
                                 }
                                 return url;
                             },
@@ -305,8 +314,8 @@
                                 "create_node" : true,
                                 "start_drag" : false,
                                 "move_node" : false,
-                                "delete_node" : false,
-                                "remove" : false
+                                "delete_node" : true,
+                                "remove" : true
                             },
                             "project" : {
                                 "valid_children" : [ "dataset" ],
@@ -767,6 +776,7 @@
                 })
                 .bind("create.jstree", function (e, data) {
                     if(!(data.rslt.parent.attr)) return;    // E.g. create root node - Group etc.
+                    if(data.rslt.obj.attr("rel") == "experimenter")return;
                     if(data.rslt.parent.attr("rel") == "project") {
                         url = '{% url manage_action_containers "addnewcontainer" %}project/'+data.rslt.parent.attr("id").split("-")[1]+'/';
                     } else {
@@ -913,45 +923,102 @@
         });
     });
     </script>
-    
+
+    <!-- group and user display settings -->
     <script>
         $(document).ready(function(){
+            
+            var update_group_display = function($group) {
+                var dataTree = $.jstree._focused();
+                var $checkbox = $("input[type='checkbox']", $group);
+                var show_group = $checkbox.attr('checked');
+                var $checked_groups = $(".select_group input[type='checkbox']").filter(function(index) {
+                    return $(this).attr('checked');
+                });
+                var display_index = $checked_groups.index($checkbox);
+                var groupId = "group-"+ $group.attr('id').split("-")[1];
+                var perms = $(".group_perms", $group).text();
+                var group_name = $(".group_name", $group).text();
+                var group_rel = "group_"+perms
+                if (show_group) {
+                    // check it doesn't exist already
+                    if ($("#"+groupId).length == 0) {
+                        $("#dataTree").jstree("create", -1, display_index, { "attr" : { "rel":group_rel, "id":groupId}, "data":group_name, "state":"closed" }, false, true);
+                    }
+                } else {
+                    $("#dataTree").jstree("remove", $("#"+groupId));
+                }
+            }
+            
+            var update_user_display = function($user) {
+                var dataTree = $.jstree._focused();
+                var $checkbox = $("input[type='checkbox']", $user);
+                var show_user = $checkbox.attr('checked');
+                var $checked_users = $(".select_user input[type='checkbox']").filter(function(index) {
+                    return $(this).attr('checked');
+                });
+                var groupId = $("#config_group_name").data("group_id");
+                var display_index = $checked_users.index($checkbox);
+                var exp_id = $user.attr('id').split("-")[1];
+                var userId = "experimenter-"+ exp_id +"-group-"+groupId;
+                var user_name = $(".experimenter_name", $user).text();
+                var exp_rel = "experimenter"
+                var group_node = $("#group-"+groupId);
+                if (show_user) {
+                    // check it doesn't exist already
+                    if ($("#"+userId).length == 0) {
+                        $("#dataTree").jstree("create", group_node, display_index, { "attr" : { "rel":exp_rel, "id":userId}, "data":user_name, "state":"closed" }, false, true);
+                        // update our 'tree_groups' parameter
+                        $.post('/webclient/config_experimenters/', {group_id: groupId, to_add: exp_id});
+                    }
+                } else {
+                    $("#dataTree").jstree("remove", $("#"+userId));
+                    $.post('/webclient/config_experimenters/', {group_id: groupId, to_remove: exp_id});
+                }
+            }
             
             // add click handler to entire body, to close the activities panel 
             $('body').click(function(event) {
                 var $target = $(event.target);
                 var $group = null;
+                var $user = null;
+                
                 if ($target.hasClass("select_group")) {
-                    var $group = $target;
+                    $group = $target;
                 } else if ($target.parent().hasClass("select_group")) {
-                    var $group = $target.parent();
+                    $group = $target.parent();
+                } else if ($target.hasClass('select_user')) {
+                    $user = $target;
+                } else if ($target.parent().hasClass('select_user')) {
+                    $user = $target.parent();
                 } else {
                     $("#group_display_config").hide();
                     return;
                 }
-                //console.log($group)
-                var $checkbox = $("input[type='checkbox']", $group);
-                var show_group = false;
-                if ($checkbox.attr('checked')) { $checkbox.attr("checked", null);
-                } else {
-                    $checkbox.attr("checked", "true");
-                    show_group = true;
+                if ($group) {
+                    // toggle checkbox manually
+                    if ($target.attr('type') != 'checkbox'){
+                        var $checkbox = $("input[type='checkbox']", $group);
+                        if ($checkbox.attr('checked')) {
+                            $checkbox.attr("checked", null);
+                        } else {
+                            $checkbox.attr("checked", "true");
+                        }
+                    }
+                    update_group_display($group);
                 }
-                var dataTree = $.jstree._focused();
                 
-                var $checked_groups = $(".select_group input[type='checkbox']").filter(function(index) {
-                    return $(this).attr('checked');
-                });
-                var display_index = $checked_groups.index($checkbox);
-                
-                var groupId = "group-"+ $checkbox.parent().attr('id').split("-")[1];
-                var perms = $(".group_perms", $group).text();
-                var group_name = $(".group_name", $group).text();
-                var group_rel = "group_"+perms
-                if (show_group) {
-                    $("#dataTree").jstree("create", -1, display_index, { "attr" : { "rel":group_rel, "id":groupId}, "data":group_name, "state":"closed" }, false, true);
-                } else {
-                    $("#dataTree").jstree("remove", $("#"+groupId));
+                if ($user) {
+                    // toggle checkbox manually
+                    if ($target.attr('type') != 'checkbox'){
+                        var $checkbox = $("input[type='checkbox']", $user);
+                        if ($checkbox.attr('checked')) {
+                            $checkbox.attr("checked", null);
+                        } else {
+                            $checkbox.attr("checked", "true");
+                        }
+                    }
+                    update_user_display($user);
                 }
             });
             // start off with group_config hidden. Show when click settings.
@@ -959,7 +1026,28 @@
             $("#settings").click(function(){
                 $("#group_display_config").toggle();
                 return false;
-            })
+            });
+            $(".config_users").click(function(){
+                var $group = $(this).parent();
+                var grp_id = $group.attr("id").split("-")[1];
+                var group_name = $(".group_name", $group).text();
+                $("#config_group_name").text(group_name);
+                $("#config_group_name").data("group_id", grp_id);
+                $("#group_config, #users_config").animate({ left: "-200px"});
+                
+                $("#users_config_list").load("/webclient/load_users_config/"+grp_id+"/");
+                
+                // make sure we are displaying this group
+                $("input[type='checkbox']", $group).attr("checked", 'true');
+                update_group_display($group);
+                // expand tree
+                $("#dataTree").jstree("open_node", $("#group-"+grp_id));
+                return false;
+            });
+            $("#back_to_group_config").click(function(){
+                $("#group_config, #users_config").animate({ left: "0px"});
+                return false;
+            });
         });
     
     </script>
@@ -1045,15 +1133,28 @@
 
             </dl>
             <a href="#" id="settings">Settings</a>
-            <div id="group_display_config" class="info_panel" style="left:50px">
-                {% for g in member_groups %}
-                    <div id="select_group-{{ g.id }}" class="select_group perms_{{ g.perms }}" style="padding: 10px; cursor:pointer">
-                        <input type="checkbox" {% if g.show %}checked="true"{% endif %} />
-                        <span class="group_name">{{ g.name }}</span>
-                        <span class="group_perms" style="display: none">{{ g.perms }}</span>
+            <div id="group_display_config">
+                <div id="group_config" style="width: 200px; position:relative; left:0px; float:left">
+                    <h3>Groups</h3>
+                    <ul>
+                    {% for g in member_groups %}
+                        <li id="select_group-{{ g.id }}" class="select_group perms_{{ g.perms }}" style="padding: 10px; cursor:pointer">
+                            <input type="checkbox" {% if g.show %}checked="true"{% endif %} />
+                            <span class="group_name">{{ g.name }}</span>
+                            <span class="group_perms" style="display: none">{{ g.perms }}</span>
+                            <div style="float:right; border:solid gray 1px; padding: 3px" class="config_users">Users >></div>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </div>
+                
+                <div id="users_config" style="width: 200px; position:relative; left:0px; float:left">
+                    <div id="back_to_group_config" style="float:left; cursor:pointer; padding:3px; border:solid gray 1px"> Back </div>
+                    <h3 id="config_group_name"></h3>
+                    <div id="users_config_list">
+                        <!-- load user list here webclient/data/users_config.html -->
                     </div>
-                {% endfor %}
-                Close X
+                </div>
             </div>
         </div>
 

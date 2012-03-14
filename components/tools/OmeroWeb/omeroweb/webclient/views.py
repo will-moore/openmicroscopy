@@ -773,10 +773,37 @@ def load_data(request, o1_type=None, o1_id=None, o2_type=None, o2_id=None, o3_ty
 
 
 @isUserConnected
-def load_tree(request, conn=None, **kwargs):
+def load_experimenters(request, group_id, conn=None, **kwargs):
+    
+    group_id = int(group_id)
+    userId = conn.getEventContext().userId
+    tree_groups = request.session.get('tree_groups')
+    
+    def show_experimenter(eid):
+        if tree_groups is None or group_id not in tree_groups:
+            # if not, we check settings - display ALL or just current?
+            return settings.MULTI_USER or eid == userId
+        else:
+            return eid in tree_groups[group_id]
+
+    experimenters = []
+    for exp in conn.containedExperimenters(group_id):
+        experimenters.append({"id":exp.id, "name":exp.getFullName(), "lastName":exp.lastName, "show":show_experimenter(exp.id)})
+    experimenters.sort(key=lambda x: x['lastName'].lower())
+    context = {"experimenters":experimenters, "group_id":group_id}
+    if 'template' in kwargs:
+        t = template_loader.get_template(kwargs['template'])
+        c = Context(request, context)
+        return HttpResponse(t.render(c))
+
+    return HttpResponse(simplejson.dumps(experimenters),mimetype='application/javascript') # json
+
+    
+@isUserConnected
+def load_groups(request, conn=None, **kwargs):
     """
     This supplies data for the tree, via AJAX calls.
-    The Groups and Experimenters at the base of the tree may be filtered according to 'tree_groups' in session.
+    The Groups at the base of the tree may be filtered according to 'tree_groups' in session.
     """
 
     groupId = conn.getEventContext().groupId
@@ -784,7 +811,6 @@ def load_tree(request, conn=None, **kwargs):
 
     # we may store the user's preference for which groups and experimenters to show in tree
     tree_groups = request.session.get('tree_groups')
-
 
     context = {}
 
@@ -795,38 +821,15 @@ def load_tree(request, conn=None, **kwargs):
         else:
             return gid in tree_groups
 
-    member_groups = []
-    for g in conn.getGroupsMemberOf():
+    groups = []
+    gids = conn.getEventContext().memberOfGroups
+    for g in conn.getObjects("ExperimenterGroup", gids):
         name = g.getName()
         perms = g.getPermissionsAsString()
-        member_groups.append({"id":g.id, "name":name, "perms":perms, "show":show_group(g.id)})
-    member_groups.sort(key=lambda x: x['name'].lower())
+        exp_count = len( list(g.copyGroupExperimenterMap()))
+        groups.append({"id":g.id, "name":name, "perms":perms, "show":show_group(g.id), "exp_count":exp_count})
+    groups.sort(key=lambda x: x['name'].lower())
     
-    # If we haven't specified a groups & experimenters preference for the tree, set this up to include ALL
-    grps = None
-    if tree_groups is None:
-        my_grp_ids = [g.id for g in conn.getGroupsMemberOf() if show_group(g.id)]
-        grps = list(conn.getObjects("ExperimenterGroup", my_grp_ids))
-        tree_groups = {}
-        for g in grps:
-            eids = [gemap.child.id.val for gemap in g.copyGroupExperimenterMap()]
-            tree_groups[g.id] = set(eids)
-
-    grps = grps is not None and grps or list(conn.getObjects("ExperimenterGroup", tree_groups.keys()))
-    groups = []
-    for g in grps:
-        conn.CONFIG['SERVICE_OPTS']['omero.group'] = str(g.getId())
-        experimenters = []
-        #if g.id != groupId:         # TODO - currently we can only get data for our current group
-        #    groups.append({"group":g, "experimenters":[]})
-        #    continue
-        for eid in tree_groups[g.id]:
-            m = BaseContainer(conn)
-            m.listContainerHierarchy(eid)   # load Projects and Datasets for each Experimenter
-            experimenters.append(m)
-        experimenters.sort(key=lambda x: x.experimenter.getOmeName().lower())
-        groups.append({"group":g, "experimenters":experimenters})
-    groups.sort(key=lambda x: x['group'].getName().lower())
     context['groups'] = groups
     template = "webclient/data/groups_tree.html"
 
@@ -846,6 +849,7 @@ def config_groups(request, conn=None, **kwargs):
     """
 
     group_id = request.POST.get('group_id', conn.getEventContext().groupId)
+    groupId = int(group_id)
     userId = conn.getEventContext().userId
     # store the 'active' experimenters for each group in a map of gId: set(eids)
     if request.session.get('tree_groups') is None:
@@ -861,23 +865,27 @@ def config_groups(request, conn=None, **kwargs):
 
 
 @isUserConnected
-def add_experimenters(request, conn=None, **kwargs):
+def config_experimenters(request, conn=None, **kwargs):
     """
     Adds 'experimenters' from the request.POST to the specified 'group_Id' or current group.
     This updates the request.session['tree_groups'] map.
     """
 
     group_id = request.POST.get('group_id', conn.getEventContext().groupId)
+    group_id = int(group_id)
     userId = conn.getEventContext().userId
     # store the 'active' experimenters for each group in a map of gId: set(eids)
     if request.session.get('tree_groups') is None:
-        request.session['tree_groups'] = {groupId: set([userId])}
-    eids = request.POST.getlist("experimenters")
-    if groupId not in request.session['tree_groups']:
-        request.session['tree_groups'][groupId] = set()
+        request.session['tree_groups'] = {group_id: set([userId])}
+    if group_id not in request.session['tree_groups']:
+        request.session['tree_groups'][group_id] = set()
 
-    for expId in eids:
-        request.session['tree_groups'][groupId].add(int(expId))
+    for expId in request.POST.getlist("to_add"):
+        request.session['tree_groups'][group_id].add(int(expId))
+    for expId in request.POST.getlist("to_remove"):
+        try:
+            request.session['tree_groups'][group_id].remove(int(expId))
+        except KeyError: pass
     request.session.modified = True
     return HttpResponse("OK")
 

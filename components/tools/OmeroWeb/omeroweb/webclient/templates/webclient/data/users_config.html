@@ -23,16 +23,12 @@
 
 
 <ul>
-{% for group in groups %}
-    {% if group.show %}
-    <li id="group-{{ group.id }}" rel="group_{{ group.perms }}" {% if group.exp_count %}class="jstree-closed"{% endif %}>
-        <a href="#">
-            <span class="node_name">{{ group.name }}</span>
-            {% if group.exp_count %}
-                <span class="children_count" id="counter-group-{{ d.id }}">{{ group.exp_count }}</span>
-            {% endif %}
-        </a>
+{% for exp in experimenters %}
+    <li id="select_user-{{ exp.id }}" class="select_user" style="padding: 10px; cursor:pointer">
+        
+        <input type="checkbox" {% if exp.show %}checked="true"{% endif %} />
+        <span class="experimenter_name">{{ exp.name }}</span>
+        
     </li>
-    {% endif %}
 {% endfor %}
 </ul>
