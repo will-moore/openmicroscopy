@@ -228,6 +228,9 @@ CUSTOM_SETTINGS_MAPPINGS = {
     "omero.web.open_astex_min_side": ["OPEN_ASTEX_MIN_SIDE", 20, int],
     "omero.web.open_astex_max_voxels": ["OPEN_ASTEX_MAX_VOXELS", 27000000, int],  # 300 x 300 x 300
     "omero.web.scripts_to_ignore": ["SCRIPTS_TO_IGNORE", '["/omero/figure_scripts/Movie_Figure.py", "/omero/figure_scripts/Split_View_Figure.py", "/omero/figure_scripts/Thumbnail_Figure.py", "/omero/figure_scripts/ROI_Split_Figure.py", "/omero/export_scripts/Make_Movie.py"]', parse_paths],
+    # Configure whether to show all groups / users by default. If false, just show current group & user.
+    "omero.web.multi_group": ["MULTI_GROUP", "false", parse_boolean],
+    "omero.web.multi_user": ["MULTI_USER", "false", parse_boolean],
     # Add links to the top header: links are ['Link Text', 'url_name'], where the url is reverse("url_name")
     "omero.web.ui.top_links": ["TOP_LINKS", '[]', json.loads],  # E.g. '[["Webtest", "webtest_index"]]'
 

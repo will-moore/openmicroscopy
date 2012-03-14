@@ -99,7 +99,6 @@
                         },
                         error: function(response) {
                             $.jstree.rollback(data.rlbk);
-                            alert("Internal server error. Cannot remove object.");
                         }
                     });
                 }
@@ -263,7 +262,7 @@
                         // This will prevent moving or creating any other type as a root node
                         "max_depth" : -1,
                         "max_children" : -1,
-                        "valid_children" : [ "group", "experimenter", "project", "project-locked", "dataset", "dataset-locked", "image", "image-locked" ],
+                        "valid_children" : [ "group_rw----", "group_rwr---", "group_rwrw--", "experimenter", "project", "project-locked", "dataset", "dataset-locked", "image", "image-locked" ],
                         "types" : {
                             "group_rw----" : {
                                 "valid_children" : [ "experimenter" ],
@@ -273,8 +272,8 @@
                                 "create_node" : true,
                                 "start_drag" : false,
                                 "move_node" : false,
-                                "delete_node" : false,
-                                "remove" : false
+                                "delete_node" : true,
+                                "remove" : true
                             },
                             "group_rwr---" : {
                                 "valid_children" : [ "experimenter" ],
@@ -284,8 +283,8 @@
                                 "create_node" : true,
                                 "start_drag" : false,
                                 "move_node" : false,
-                                "delete_node" : false,
-                                "remove" : false
+                                "delete_node" : true,
+                                "remove" : true
                             },
                             "group_rwrw--" : {
                                 "valid_children" : [ "experimenter" ],
@@ -295,8 +294,8 @@
                                 "create_node" : true,
                                 "start_drag" : false,
                                 "move_node" : false,
-                                "delete_node" : false,
-                                "remove" : false
+                                "delete_node" : true,
+                                "remove" : true
                             },
                             "experimenter" : {
                                 "valid_children" : [ "project", "project-locked", "dataset", "dataset-locked", "screen", "screen-locked", "plate", "plate-locked" ],
@@ -767,6 +766,7 @@
 
                 })
                 .bind("create.jstree", function (e, data) {
+                    if(!(data.rslt.parent.attr)) return;    // E.g. create root node - Group etc.
                     if(data.rslt.parent.attr("rel") == "project") {
                         url = '{% url manage_action_containers "addnewcontainer" %}project/'+data.rslt.parent.attr("id").split("-")[1]+'/';
                     } else {
@@ -913,6 +913,56 @@
         });
     });
     </script>
+    
+    <script>
+        $(document).ready(function(){
+            
+            // add click handler to entire body, to close the activities panel 
+            $('body').click(function(event) {
+                var $target = $(event.target);
+                var $group = null;
+                if ($target.hasClass("select_group")) {
+                    var $group = $target;
+                } else if ($target.parent().hasClass("select_group")) {
+                    var $group = $target.parent();
+                } else {
+                    $("#group_display_config").hide();
+                    return;
+                }
+                //console.log($group)
+                var $checkbox = $("input[type='checkbox']", $group);
+                var show_group = false;
+                if ($checkbox.attr('checked')) { $checkbox.attr("checked", null);
+                } else {
+                    $checkbox.attr("checked", "true");
+                    show_group = true;
+                }
+                var dataTree = $.jstree._focused();
+                
+                var $checked_groups = $(".select_group input[type='checkbox']").filter(function(index) {
+                    return $(this).attr('checked');
+                });
+                var display_index = $checked_groups.index($checkbox);
+                
+                var groupId = "group-"+ $checkbox.parent().attr('id').split("-")[1];
+                var perms = $(".group_perms", $group).text();
+                var group_name = $(".group_name", $group).text();
+                var group_rel = "group_"+perms
+                if (show_group) {
+                    $("#dataTree").jstree("create", -1, display_index, { "attr" : { "rel":group_rel, "id":groupId}, "data":group_name, "state":"closed" }, false, true);
+                } else {
+                    $("#dataTree").jstree("remove", $("#"+groupId));
+                }
+            });
+            // start off with group_config hidden. Show when click settings.
+            $("#group_display_config").hide();
+            $("#settings").click(function(){
+                $("#group_display_config").toggle();
+                return false;
+            })
+        });
+    
+    </script>
 
     <!-- set up the center panel to only show the div chosen by <select> -->
     <script type="text/javascript">
@@ -995,6 +1045,16 @@
 
             </dl>
             <a href="#" id="settings">Settings</a>
+            <div id="group_display_config" class="info_panel" style="left:50px">
+                {% for g in member_groups %}
+                    <div id="select_group-{{ g.id }}" class="select_group perms_{{ g.perms }}" style="padding: 10px; cursor:pointer">
+                        <input type="checkbox" {% if g.show %}checked="true"{% endif %} />
+                        <span class="group_name">{{ g.name }}</span>
+                        <span class="group_perms" style="display: none">{{ g.perms }}</span>
+                    </div>
+                {% endfor %}
+                Close X
+            </div>
         </div>
 
 

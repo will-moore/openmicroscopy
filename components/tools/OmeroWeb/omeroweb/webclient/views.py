@@ -621,45 +621,26 @@ def load_template(request, menu, **kwargs):
     except AttributeError, x:
         logger.error(traceback.format_exc())
         return handlerInternalError(x)
-    """
-    form_users = None
-    filter_user_id = None
+
+    # the groups that are displayed may be stored in 'tree_groups' map
+    tree_groups = request.session.get('tree_groups')
+    groupId = conn.getEventContext().groupId
     
-    s = conn.groupSummary()
-    leaders = s["leaders"]
-    members = s["colleagues"]
-    users = []
-    leaders.sort(key=lambda x: x.getOmeName().lower())
-    if len(leaders) > 0:
-        users.append( ("Owners", leaders) )
-    members.sort(key=lambda x: x.getOmeName().lower())
-    if len(members) > 0:
-        users.append( ("Members", members) )
-    users = tuple(users)
-    empty_label = None #"*%s (%s)" % (conn.getUser().getFullName(), conn.getUser().omeName)
-    if len(users) > 0:
-        if request.REQUEST.get('experimenter') is not None and len(request.REQUEST.get('experimenter'))>0:
-            form_users = UsersForm(initial={'users': users, 'empty_label':empty_label, 'menu':menu}, data=request.REQUEST.copy())
-            if form_users.is_valid():
-                filter_user_id = request.REQUEST.get('experimenter', None)
-                request.session.get('nav')['experimenter'] = filter_user_id
-                form_users = UsersForm(initial={'user':filter_user_id, 'users': users, 'empty_label':empty_label, 'menu':menu})
+    def show_group(gid):
+        if tree_groups is None:
+            # if not, we check settings - display ALL or just current?
+            return settings.MULTI_GROUP or gid == groupId
         else:
-            if request.REQUEST.get('experimenter') == "":
-                request.session.get('nav')['experimenter'] = None
-            filter_user_id = request.session.get('nav')['experimenter'] is not None and request.session.get('nav')['experimenter'] or None
-            if filter_user_id is None:
-                filter_user_id = conn.getEventContext().userId
-            form_users = UsersForm(initial={'user':filter_user_id, 'users': users, 'empty_label':empty_label, 'menu':menu})
-            
-    else:
-        form_users = UsersForm(initial={'users': users, 'empty_label':empty_label, 'menu':menu})
-            
-    form_active_group = ActiveGroupForm(initial={'activeGroup':manager.eContext['context'].groupId, 'mygroups': manager.eContext['allGroups'], 'url':url})
-    """
-    context = {'nav':request.session['nav'], 'url':url, 'init':init, 'eContext':manager.eContext} 
-    # context['form_active_group'] = form_active_group
-    # context['form_users'] = form_users
+            return gid in tree_groups
+
+    member_groups = []
+    for g in conn.getGroupsMemberOf():
+        name = g.getName()
+        perms = g.getPermissionsAsString()
+        member_groups.append({"id":g.id, "name":name, "perms":perms, "show":show_group(g.id)})
+    member_groups.sort(key=lambda x: x['name'].lower())
+
+    context = {'nav':request.session['nav'], 'url':url, 'init':init, 'eContext':manager.eContext, 'member_groups': member_groups} 
 
     t = template_loader.get_template(template)
     c = Context(request,context)
@@ -807,10 +788,24 @@ def load_tree(request, conn=None, **kwargs):
 
     context = {}
 
+    def show_group(gid):
+        if tree_groups is None:
+            # if not, we check settings - display ALL or just current?
+            return settings.MULTI_GROUP or gid == groupId
+        else:
+            return gid in tree_groups
+
+    member_groups = []
+    for g in conn.getGroupsMemberOf():
+        name = g.getName()
+        perms = g.getPermissionsAsString()
+        member_groups.append({"id":g.id, "name":name, "perms":perms, "show":show_group(g.id)})
+    member_groups.sort(key=lambda x: x['name'].lower())
+    
     # If we haven't specified a groups & experimenters preference for the tree, set this up to include ALL
     grps = None
     if tree_groups is None:
-        my_grp_ids = [g.id for g in conn.getGroupsMemberOf()]
+        my_grp_ids = [g.id for g in conn.getGroupsMemberOf() if show_group(g.id)]
         grps = list(conn.getObjects("ExperimenterGroup", my_grp_ids))
         tree_groups = {}
         for g in grps:
@@ -845,23 +840,44 @@ def load_tree(request, conn=None, **kwargs):
 
 
 @isUserConnected
-def add_experimenters(request, conn=None, **kwargs):
+def config_groups(request, conn=None, **kwargs):
     """
-    Adds 'experimenters' from the request.POST to the current context.
-    This updates the request.session['experimenters'] list.
+    Add and/or Remove 'groups' from ones that we currently display in the tree.
     """
 
-    groupId = conn.getEventContext().groupId
+    group_id = request.POST.get('group_id', conn.getEventContext().groupId)
     userId = conn.getEventContext().userId
     # store the 'active' experimenters for each group in a map of gId: set(eids)
-    if request.session.get('context') is None:
-        request.session['context'] = {groupId: set([userId])}
+    if request.session.get('tree_groups') is None:
+        request.session['tree_groups'] = {groupId: set([userId])}
     eids = request.POST.getlist("experimenters")
-    if groupId not in request.session['context']:
-        request.session['context'][groupId] = set()
+    if groupId not in request.session['tree_groups']:
+        request.session['tree_groups'][groupId] = set()
 
     for expId in eids:
-        request.session['context'][groupId].add(int(expId))
+        request.session['tree_groups'][groupId].add(int(expId))
+    request.session.modified = True
+    return HttpResponse("OK")
+
+
+@isUserConnected
+def add_experimenters(request, conn=None, **kwargs):
+    """
+    Adds 'experimenters' from the request.POST to the specified 'group_Id' or current group.
+    This updates the request.session['tree_groups'] map.
+    """
+
+    group_id = request.POST.get('group_id', conn.getEventContext().groupId)
+    userId = conn.getEventContext().userId
+    # store the 'active' experimenters for each group in a map of gId: set(eids)
+    if request.session.get('tree_groups') is None:
+        request.session['tree_groups'] = {groupId: set([userId])}
+    eids = request.POST.getlist("experimenters")
+    if groupId not in request.session['tree_groups']:
+        request.session['tree_groups'][groupId] = set()
+
+    for expId in eids:
+        request.session['tree_groups'][groupId].add(int(expId))
     request.session.modified = True
     return HttpResponse("OK")
 
