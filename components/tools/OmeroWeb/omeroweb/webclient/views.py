@@ -726,7 +726,11 @@ def load_data(request, o1_type=None, o1_id=None, o2_type=None, o2_id=None, o3_ty
         #return handlerInternalError(x)
     
     # prepare forms
-    filter_user_id = request.session.get('nav')['experimenter']
+    #filter_user_id = request.session.get('nav')['experimenter']
+    filter_user_id = request.REQUEST.get("experimenter", None)
+    filter_group = request.REQUEST.get("group", None)
+    if filter_group:
+        conn.CONFIG['SERVICE_OPTS']['omero.group'] = str(filter_group)
     form_well_index = None
         
     # load data & template
@@ -758,7 +762,7 @@ def load_data(request, o1_type=None, o1_id=None, o2_type=None, o2_id=None, o3_ty
     else:
         manager.listContainerHierarchy(filter_user_id)
         if view =='tree':
-            template = "webclient/data/containers_tree.html"
+            template = "webclient/data/projects_tree.html"
         elif view =='icon':
             template = "webclient/data/containers_icon.html"
         elif view =='table':
@@ -794,7 +798,6 @@ def load_experimenters(request, group_id, show_all=False, conn=None, **kwargs):
         if not (show_all or show_experimenter(exp.id)):
             continue
         project_count = len( list(conn.listProjects(exp.id)) )    # get the project count for this user in this group
-        print project_count
         experimenters.append({"id":exp.id, "name":exp.getFullName(), "lastName":exp.lastName, 
                     "show":show_experimenter(exp.id), "project_count":project_count})
     experimenters.sort(key=lambda x: x['lastName'].lower())

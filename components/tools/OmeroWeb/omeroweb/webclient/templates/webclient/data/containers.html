@@ -231,22 +231,20 @@
                             // the URL to fetch the data
                             "url" : function(n) {
                                 if (n.attr) {
+                                    var rel = n.attr("rel").replace("-locked", "");
                                     var parent = this._get_parent(n);
-                                    var rel = $(parent).attr("rel") && $(parent).attr("rel").replace("-locked", "");
-                                    if (rel) {
-                                        if (($.inArray(rel, ["project", "screen"])) > -1) {
-                                            url = "{% url load_data %}"+$(parent).attr("rel").replace("-locked", "")+"/"+$(parent).attr("id").split("-")[1]+"/"+n.attr("rel").replace("-locked", "")+"/"+n.attr("id").split("-")[1]+"/";
-                                        } else {
-                                            url = "{% url load_data %}"+n.attr("rel").replace("-locked", "")+"/"+n.attr("id").split("-")[1]+"/";
-                                        }
-                                        return url
-                                    } else {
-                                        var rel = n.attr("rel").replace("-locked", "");
-                                        if (rel.indexOf("group") > -1){
-                                            url = "/webclient/load_experimenters/" +n.attr("id").split("-")[1]+"/";
-                                        }
+                                    var parent_rel = $(parent).attr("rel") && $(parent).attr("rel").replace("-locked", "");
+                                    if (parent_rel && ($.inArray(parent_rel, ["project", "screen"])) > -1) {
+                                        url = "{% url load_data %}"+$(parent).attr("rel").replace("-locked", "")+"/"+$(parent).attr("id").split("-")[1]+"/"+n.attr("rel").replace("-locked", "")+"/"+n.attr("id").split("-")[1]+"/";
+                                    } else if (rel.indexOf("group") > -1){
+                                        url = "/webclient/load_experimenters/" +n.attr("id").split("-")[1]+"/";
+                                    } else if (rel.indexOf("experimenter") > -1){
+                                        var eid = n.attr("id").split("-")[1];
+                                        var gid = $(parent).attr("id").split("-")[1];
+                                        url = "{% url load_data %}?experimenter="+eid+"&group="+gid;    // load projects & datasets
                                     }
                                 } else {
+                                    // root of the tree
                                     url = "{% url load_groups %}";
                                 }
                                 return url;
