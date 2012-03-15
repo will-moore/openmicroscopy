@@ -634,10 +634,12 @@ def load_template(request, menu, **kwargs):
             return gid in tree_groups
 
     member_groups = []
-    for g in conn.getGroupsMemberOf():
+    gids = conn.getEventContext().memberOfGroups
+    for g in conn.getObjects("ExperimenterGroup", gids):
         name = g.getName()
         perms = g.getPermissionsAsString()
-        member_groups.append({"id":g.id, "name":name, "perms":perms, "show":show_group(g.id)})
+        exp_count = len( list(g.copyGroupExperimenterMap()))
+        member_groups.append({"id":g.id, "name":name, "perms":perms, "show":show_group(g.id), "exp_count":exp_count})
     member_groups.sort(key=lambda x: x['name'].lower())
 
     context = {'nav':request.session['nav'], 'url':url, 'init':init, 'eContext':manager.eContext, 'member_groups': member_groups} 
@@ -773,7 +775,7 @@ def load_data(request, o1_type=None, o1_id=None, o2_type=None, o2_id=None, o3_ty
 
 
 @isUserConnected
-def load_experimenters(request, group_id, conn=None, **kwargs):
+def load_experimenters(request, group_id, show_all=False, conn=None, **kwargs):
     
     group_id = int(group_id)
     userId = conn.getEventContext().userId
@@ -786,10 +788,17 @@ def load_experimenters(request, group_id, conn=None, **kwargs):
         else:
             return eid in tree_groups[group_id]
 
+    conn.CONFIG['SERVICE_OPTS']['omero.group'] = str(group_id)
     experimenters = []
     for exp in conn.containedExperimenters(group_id):
-        experimenters.append({"id":exp.id, "name":exp.getFullName(), "lastName":exp.lastName, "show":show_experimenter(exp.id)})
+        if not (show_all or show_experimenter(exp.id)):
+            continue
+        project_count = len( list(conn.listProjects(exp.id)) )    # get the project count for this user in this group
+        print project_count
+        experimenters.append({"id":exp.id, "name":exp.getFullName(), "lastName":exp.lastName, 
+                    "show":show_experimenter(exp.id), "project_count":project_count})
     experimenters.sort(key=lambda x: x['lastName'].lower())
+    #conn.CONFIG['SERVICE_OPTS']['omero.group'] = "-1"
     context = {"experimenters":experimenters, "group_id":group_id}
     if 'template' in kwargs:
         t = template_loader.get_template(kwargs['template'])
@@ -878,7 +887,7 @@ def config_experimenters(request, conn=None, **kwargs):
     if request.session.get('tree_groups') is None:
         request.session['tree_groups'] = {group_id: set([userId])}
     if group_id not in request.session['tree_groups']:
-        request.session['tree_groups'][group_id] = set()
+        request.session['tree_groups'][group_id] = set([userId])
 
     for expId in request.POST.getlist("to_add"):
         request.session['tree_groups'][group_id].add(int(expId))

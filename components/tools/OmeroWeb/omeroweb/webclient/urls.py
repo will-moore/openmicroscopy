@@ -46,7 +46,8 @@ urlpatterns = patterns('django.views.generic.simple',
 
     # update users and groups in the current context
     url( r'^config_experimenters/$', views.config_experimenters, name="config_experimenters" ),
-    url( r'^load_users_config/(?P<group_id>[0-9]+)/$', views.load_experimenters, {'template':'webclient/data/users_config.html'}, name="load_users_config" ),
+    url( r'^load_users_config/(?P<group_id>[0-9]+)/$', views.load_experimenters, 
+                {'template':'webclient/data/users_config.html', 'show_all': True}, name="load_users_config" ),
     
     # load basket
     url( r'^basket/empty/$', views.empty_basket, name="empty_basket"),

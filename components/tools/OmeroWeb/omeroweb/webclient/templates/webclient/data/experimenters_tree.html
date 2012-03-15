@@ -25,9 +25,12 @@
 <ul>
 {% for e in experimenters %}
     {% if e.show %}
-    <li id="experimenter-{{ e.id }}-group-{{ group_id }}" rel="experimenter">
+    <li id="experimenter-{{ e.id }}-group-{{ group_id }}" rel="experimenter" {% if e.project_count %}class="jstree-closed"{% endif %}>
         <a href="#">
             <span class="node_name">{{ e.name }}</span>
+            {% if e.project_count %}
+                <span class="children_count">{{ e.project_count }}</span>
+            {% endif %}
         </a>
     </li>
     {% endif %}

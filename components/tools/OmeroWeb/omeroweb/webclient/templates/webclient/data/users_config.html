@@ -28,6 +28,7 @@
         
         <input type="checkbox" {% if exp.show %}checked="true"{% endif %} />
         <span class="experimenter_name">{{ exp.name }}</span>
+        <span class="project_count" style="display:none">{{ exp.project_count }}</span>
         
     </li>
 {% endfor %}

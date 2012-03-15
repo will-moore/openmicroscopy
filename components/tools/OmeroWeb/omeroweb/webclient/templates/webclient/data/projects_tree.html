@@ -28,7 +28,7 @@
         <a href="#">
             <span class="node_name">{{ c.name|truncatebefor:"35" }}</span>
             {% if c.countChildren_cached %}
-                <span class="children_count" id="counter-project-{{ c.id }}">{{ c.countChildren_cached}}</span>
+                <span class="children_count">{{ c.countChildren_cached}}</span>
             {% endif %}
         </a>
         {% if c.countChildren_cached %}
@@ -45,7 +45,7 @@
             <a href="#">
                 <span class="node_name">{{ d.name|truncatebefor:"35" }}</span>
                 {% if d.countChildren_cached %}
-                    <span class="children_count" id="counter-dataset-{{ d.id }}">{{ d.countChildren_cached}}</span>
+                    <span class="children_count">{{ d.countChildren_cached}}</span>
                 {% endif %}
             </a>
         </li>
@@ -57,7 +57,7 @@
         <a href="#">
             <span class="node_name">{{ c.name|truncatebefor:"35" }}</span>
             {% if c.countChildren_cached %}
-                <span class="children_count" id="counter-screen-{{ c.id }}">{{ c.countChildren_cached}}</span>
+                <span class="children_count">{{ c.countChildren_cached}}</span>
             {% endif %}
         </a>
         {% if c.countChildren_cached %}

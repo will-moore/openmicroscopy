@@ -475,7 +475,8 @@
                     "core" : { 
                         // just open those two nodes up
                         // as this is an AJAX enabled tree, both will be downloaded from the server
-                        "initially_open" : [ {% for p in init.initially_open %}"{{ p }}",{% endfor %} "experimenter-0" ]
+                        "initially_open" : [ {% for p in init.initially_open %}"{{ p }}",{% endfor %} "experimenter-0" ],
+                        "html_titles": true,
                     },
                     "contextmenu" : {
                         "select_node":true,
@@ -939,11 +940,13 @@
                 var groupId = "group-"+ $group.attr('id').split("-")[1];
                 var perms = $(".group_perms", $group).text();
                 var group_name = $(".group_name", $group).text();
+                var exp_count = $(".exp_count", $group).text();
+                var group_html = "<span class='node_name'>"+group_name+"</span><span class='children_count'>"+exp_count+"</span>";
                 var group_rel = "group_"+perms
                 if (show_group) {
                     // check it doesn't exist already
                     if ($("#"+groupId).length == 0) {
-                        $("#dataTree").jstree("create", -1, display_index, { "attr" : { "rel":group_rel, "id":groupId}, "data":group_name, "state":"closed" }, false, true);
+                        $("#dataTree").jstree("create", -1, display_index, { "attr" : { "rel":group_rel, "id":groupId}, "data":group_html, "state":"closed" }, false, true);
                     }
                 } else {
                     $("#dataTree").jstree("remove", $("#"+groupId));
@@ -962,12 +965,14 @@
                 var exp_id = $user.attr('id').split("-")[1];
                 var userId = "experimenter-"+ exp_id +"-group-"+groupId;
                 var user_name = $(".experimenter_name", $user).text();
+                var project_count = $(".project_count", $user).text();
+                var user_html = "<span class='node_name'>"+user_name+"</span><span class='children_count'>"+project_count+"</span>";
                 var exp_rel = "experimenter"
                 var group_node = $("#group-"+groupId);
                 if (show_user) {
                     // check it doesn't exist already
                     if ($("#"+userId).length == 0) {
-                        $("#dataTree").jstree("create", group_node, display_index, { "attr" : { "rel":exp_rel, "id":userId}, "data":user_name, "state":"closed" }, false, true);
+                        $("#dataTree").jstree("create", group_node, display_index, { "attr" : { "rel":exp_rel, "id":userId}, "data":user_html, "state":"closed" }, false, true);
                         // update our 'tree_groups' parameter
                         $.post('/webclient/config_experimenters/', {group_id: groupId, to_add: exp_id});
                     }
@@ -1142,6 +1147,7 @@
                             <input type="checkbox" {% if g.show %}checked="true"{% endif %} />
                             <span class="group_name">{{ g.name }}</span>
                             <span class="group_perms" style="display: none">{{ g.perms }}</span>
+                            <span class="exp_count" style="display:none">{{ g.exp_count }}</span>
                             <div style="float:right; border:solid gray 1px; padding: 3px" class="config_users">Users >></div>
                         </li>
                     {% endfor %}
