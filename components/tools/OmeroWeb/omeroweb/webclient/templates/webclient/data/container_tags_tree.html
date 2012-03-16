@@ -21,9 +21,9 @@
 -->
 {% endcomment %}
 
-<ul>
+<!-- ><ul>
     <li id="experimenter-0" rel="experimenter"><a href="#">{% if manager.experimenter %}{{ manager.experimenter.getFullName }}{% else %}{{ eContext.user.getFullName }}{% endif %}</a>
-        {% if manager.t_size %}
+        {% if manager.t_size %} -->
         <ul>
             {% for t in manager.tags %}
             {% if t.ns %}
@@ -41,6 +41,7 @@
             {% endif %}
             {% endfor %}            
         </ul>
-        {% endif %}
+        <!--{% endif %}
+
     </li>
-</ul>
+</ul> -->

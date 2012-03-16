@@ -381,7 +381,7 @@ class OmeroWebGateway (omero.gateway.BlitzGateway):
             sql+=" and tg.details.owner.id = :eid"
             
         q = self.getQueryService()
-        for ann in q.findAllByQuery(sql, params):
+        for ann in q.findAllByQuery(sql, params, self.CONFIG['SERVICE_OPTS']):
             yield TagAnnotationWrapper(self, ann)
     
     def countOrphans (self, obj_type, eid=None):

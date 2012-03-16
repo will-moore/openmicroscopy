@@ -4,7 +4,7 @@
 
 {% comment %}
 <!--
-  Copyright (C) 2011 University of Dundee & Open Microscopy Environment.
+  Copyright (C) 2011-2012 University of Dundee & Open Microscopy Environment.
   All rights reserved.
 
   This program is free software: you can redistribute it and/or modify
@@ -38,6 +38,8 @@
     <script type="text/javascript" src="{% static "3rdparty/jquery.jstree/jquery.jstree.js" %}"></script>   
     <script type="text/javascript" src="{% static "webclient/javascript/ome.webclient.actions.js" %}"></script>
 
+    {% block tab_scripts %}
+    
     <!-- set-up left panel tabs, jstree etc -->
     <script type="text/javascript">
         String.prototype.capitalize = function() {
@@ -242,6 +244,10 @@
                                         var eid = n.attr("id").split("-")[1];
                                         var gid = $(parent).attr("id").split("-")[1];
                                         url = "{% url load_data %}?experimenter="+eid+"&group="+gid;    // load projects & datasets
+                                    } else if (rel=="orphaned") {
+                                        var eid = $(parent).attr("id").split("-")[1];
+                                        var gid = this._get_parent($(parent)).attr("id").split("-")[1];
+                                        url = "{% url load_data o1_type='orphaned' %}?experimenter="+eid+"&group="+gid;
                                     }
                                 } else {
                                     // root of the tree
@@ -633,116 +639,7 @@
                     // left/right expand and collapse. If right and no children, select next.
                     // space+up/down to select range.
                     "hotkeys" : {
-                        "right" : function () {
-                            // starting point is the last-selected...
-                            var o = this.data.ui.last_selected;
-                            // ...unless hover appears selected (we're in the process of rapidly traversing the tree)
-                            if (this.data.ui.hovered && this.data.ui.hovered.children("a").hasClass("jstree-clicked") ) {
-                                o = this.data.ui.hovered;
-                            }
-                            if(o && o.length) {
-                                if(o.hasClass("jstree-closed")) { this.open_node(o); }
-                                // if we are on a leaf and we have more siblings, select them
-                                else if (this.is_leaf(o) && (o.nextAll("li").size() > 0)){
-                                    var new_select = this._get_next(o);
-                                    // make the 'next' node appear selected
-                                    o.children("a").removeClass("jstree-clicked");
-                                    new_select.children("a").addClass("jstree-clicked");
-                                    this.hover_node(new_select);  // also add 'hover' as our marker
-                                    var datatree = this;
-                                    // our *actual* selection occurs after timeout, if selection hasn't moved yet
-                                    setTimeout(function (){
-                                        if (new_select.children("a").hasClass("jstree-hovered")) {
-                                            datatree.data.ui.selected = $();    // clears any previous selection
-                                            datatree.select_node(new_select);   // trigger selection event
-                                        }
-                                    }, 100);
-                                }
-                            }
-                            return false;
-                        },
-                        "down" : function () {
-                            // remove selection
-                            this.data.ui.selected && this.data.ui.selected.children("a").removeClass("jstree-clicked");
-                            // starting point is the last-selected...
-                            var o = this.data.ui.last_selected;
-                            // ...unless hover appears selected (we're in the process of rapidly traversing the tree)
-                            if (this.data.ui.hovered && this.data.ui.hovered.children("a").hasClass("jstree-clicked") ) {
-                                o = this.data.ui.hovered;
-                            }
-                            if(o && o.length) {
-                                var new_select = this._get_next(o);
-                                // make the 'next' node appear selected
-                                o.children("a").removeClass("jstree-clicked");
-                                new_select.children("a").addClass("jstree-clicked");
-                                this.hover_node(new_select);  // also add 'hover' as our marker
-                                var datatree = this;
-                                // our *actual* selection occurs after timeout, if selection hasn't moved yet
-                                setTimeout(function (){
-                                    if (new_select.children("a").hasClass("jstree-hovered")) {
-                                        datatree.data.ui.selected = $();    // clears any previous selection
-                                        datatree.select_node(new_select);   // trigger selection event
-                                    }
-                                }, 100);
-                            }
-                            return false;
-                        },
-                        "up" : function () {
-                            // remove selection
-                            this.data.ui.selected && this.data.ui.selected.children("a").removeClass("jstree-clicked");
-                            // starting point is the last-selected...
-                            var o = this.data.ui.last_selected;
-                            // ...unless hover appears selected (we're in the process of rapidly traversing the tree)
-                            if (this.data.ui.hovered && this.data.ui.hovered.children("a").hasClass("jstree-clicked") ) {
-                                o = this.data.ui.hovered;
-                            }
-                            if(o && o.length) {
-                                var new_select = this._get_prev(o);
-                                // make the 'previous' node appear selected
-                                o.children("a").removeClass("jstree-clicked");
-                                new_select.children("a").addClass("jstree-clicked");
-                                this.hover_node(new_select);  // also add 'hover' as our marker
-                                var datatree = this;
-                                // our *actual* selection occurs after timeout, if selection hasn't moved yet
-                                setTimeout(function (){
-                                    if (new_select.children("a").hasClass("jstree-hovered")) {
-                                        datatree.data.ui.selected = $();    // clears any previous selection
-                                        datatree.select_node(new_select);   // trigger selection event
-                                    }
-                                }, 100);
-                            }
-                            return false;
-                        },
-                        "left" : function () {
-                            var o = this.data.ui.last_selected || -1;
-                            if(o && o.length) {
-                                // if node is expanded, simply collapse
-                                if (o.hasClass("jstree-open")) {
-                                    this.close_node(o);
-                                } else if (this._get_parent(o)) {
-                                    var new_select = this._get_parent(o);
-                                    this.hover_node(new_select);
-                                    new_select.children("a:eq(0)").click();
-                                }
-                            }
-                            return false;
-                        },
-                        "shift+down" : function (e) {
-                            var o = this.data.ui.selected.last();
-                            if(o && o.length) {
-                                var new_select = this._get_next(o);
-                                this.select_node(new_select, true, e); // tree handles shift events for multi-select
-                            }
-                            return false;
-                        },
-                        "shift+up" : function (e) {
-                            var o = this.data.ui.selected.first();
-                            if(o && o.length) {
-                                var new_select = this._get_prev(o);
-                                this.select_node(new_select, true, e); // tree handles shift events for multi-select
-                            }
-                            return false;
-                        }
+                        {% include "webclient/data/includes/hotkeys.js" %}
                     }
 
                 })
@@ -923,6 +820,8 @@
     });
     </script>
 
+    {% endblock %}
+    
     <!-- group and user display settings -->
     <script>
         $(document).ready(function(){
@@ -935,7 +834,8 @@
                     return $(this).attr('checked');
                 });
                 var display_index = $checked_groups.index($checkbox);
-                var groupId = "group-"+ $group.attr('id').split("-")[1];
+                var gid = $group.attr('id').split("-")[1];
+                var groupId = "group-"+ gid;
                 var perms = $(".group_perms", $group).text();
                 var group_name = $(".group_name", $group).text();
                 var exp_count = $(".exp_count", $group).text();
@@ -945,9 +845,11 @@
                     // check it doesn't exist already
                     if ($("#"+groupId).length == 0) {
                         $("#dataTree").jstree("create", -1, display_index, { "attr" : { "rel":group_rel, "id":groupId}, "data":group_html, "state":"closed" }, false, true);
+                        $.post('/webclient/config_groups/', {to_add: gid});
                     }
                 } else {
                     $("#dataTree").jstree("remove", $("#"+groupId));
+                    $.post('/webclient/config_groups/', {to_remove: gid});
                 }
             }
             
@@ -1038,7 +940,7 @@
                 $("#config_group_name").data("group_id", grp_id);
                 $("#group_config, #users_config").animate({ left: "-200px"});
                 
-                $("#users_config_list").load("/webclient/load_users_config/"+grp_id+"/");
+                $("#users_config_list").load("/webclient/load_users_config/"+grp_id+"/?child_type=tag");
                 
                 // make sure we are displaying this group
                 $("input[type='checkbox']", $group).attr("checked", 'true');
@@ -1117,7 +1019,7 @@
 			{% endblock %}
 		</div>
 		-->
-		
+		{% block left_panel_tabs %}
 		<div>
 	        <ul class="ui-tabs-nav">
 		        <li><a href="#Projects" title="Explore">{% trans "Explore" %}</a></li>
@@ -1126,6 +1028,7 @@
 		        <!--<li><a href="{% url load_template 'public' %}">{% trans "Public" %}</a></li>-->
 	        </ul>
 		</div>
+		{% endblock %}
 
 
         <div id="navigator">
@@ -1164,6 +1067,7 @@
 
 
             <!-- toolbar above tree -->
+        {% block left_panel_tab_content %}
         <div id="Projects">
             <div class="toolbar">
                 <div id="buttons" class="align_left">
@@ -1205,6 +1109,8 @@
             </fieldset>
             </form>
         </div>
+        {% endblock %}
+        
     </div>
 {% endblock %}
 

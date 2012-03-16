@@ -725,8 +725,7 @@ def load_data(request, o1_type=None, o1_id=None, o2_type=None, o2_id=None, o3_ty
         return HttpJavascriptResponse("Object does not exist. Refresh the page.")
         #return handlerInternalError(x)
     
-    # prepare forms
-    #filter_user_id = request.session.get('nav')['experimenter']
+    # filter by user and group - used in loading projects etc and orphans.
     filter_user_id = request.REQUEST.get("experimenter", None)
     filter_group = request.REQUEST.get("group", None)
     if filter_group:
@@ -780,9 +779,15 @@ def load_data(request, o1_type=None, o1_id=None, o2_type=None, o2_id=None, o3_ty
 
 @isUserConnected
 def load_experimenters(request, group_id, show_all=False, conn=None, **kwargs):
+    """
+    List experimenters in the specified group.
+    
+    @param show_all:    Return ALL experimenters (not just those in session / settings)
+    """
     
     group_id = int(group_id)
     userId = conn.getEventContext().userId
+    child_type= request.REQUEST.get("child_type", "project")
     tree_groups = request.session.get('tree_groups')
     
     def show_experimenter(eid):
@@ -792,12 +797,20 @@ def load_experimenters(request, group_id, show_all=False, conn=None, **kwargs):
         else:
             return eid in tree_groups[group_id]
 
+    def get_child_count(eid):
+        if child_type == "project":
+            return len( list(conn.listProjects(eid)) )    # get the project count for this user in this group
+        elif child_type == "tag":
+            manager= BaseContainer(conn)
+            manager.loadTags(eid)
+            return len(manager.tags)
+
     conn.CONFIG['SERVICE_OPTS']['omero.group'] = str(group_id)
     experimenters = []
     for exp in conn.containedExperimenters(group_id):
         if not (show_all or show_experimenter(exp.id)):
             continue
-        project_count = len( list(conn.listProjects(exp.id)) )    # get the project count for this user in this group
+        project_count = get_child_count(exp.id)   # get the project count for this user in this group
         experimenters.append({"id":exp.id, "name":exp.getFullName(), "lastName":exp.lastName, 
                     "show":show_experimenter(exp.id), "project_count":project_count})
     experimenters.sort(key=lambda x: x['lastName'].lower())
@@ -858,20 +871,22 @@ def load_groups(request, conn=None, **kwargs):
 def config_groups(request, conn=None, **kwargs):
     """
     Add and/or Remove 'groups' from ones that we currently display in the tree.
+    We get the group ids from request.POST 'to_add' and 'to_remove'
     """
 
-    group_id = request.POST.get('group_id', conn.getEventContext().groupId)
-    groupId = int(group_id)
+    groupId = conn.getEventContext().groupId
     userId = conn.getEventContext().userId
     # store the 'active' experimenters for each group in a map of gId: set(eids)
     if request.session.get('tree_groups') is None:
         request.session['tree_groups'] = {groupId: set([userId])}
-    eids = request.POST.getlist("experimenters")
-    if groupId not in request.session['tree_groups']:
-        request.session['tree_groups'][groupId] = set()
 
-    for expId in eids:
-        request.session['tree_groups'][groupId].add(int(expId))
+    for gId in request.POST.getlist("to_add"):
+        if gId not in request.session['tree_groups']:
+            request.session['tree_groups'][gId] = set([userId])
+    for gId in request.POST.getlist("to_remove"):
+        if gId in request.session['tree_groups']:
+            del request.session['tree_groups'][gId]
+
     request.session.modified = True
     return HttpResponse("OK")
 
@@ -995,9 +1010,9 @@ def load_searching(request, form=None, **kwargs):
     return HttpResponse(t.render(c))
 
 @isUserConnected
-def load_data_by_tag(request, o_type=None, o_id=None, **kwargs):
+def load_tags(request, o_type=None, o_id=None, **kwargs):
     """ 
-    Loads data for the tag tree and center panel.
+    Loads data for the tag tree and center panel. Root of the tree is tags, filtered by user and group
     Either get the P/D/I etc under tags, or the images etc under a tagged Dataset or Project.
     @param o_type       'tag' or 'project', 'dataset'.
     """
@@ -1040,7 +1055,7 @@ def load_data_by_tag(request, o_type=None, o_id=None, **kwargs):
     except:
         logger.error(traceback.format_exc())
     if url is None:
-        url = reverse(viewname="load_data_by_tag")
+        url = reverse(viewname="load_tags")
     
     # get page    
     try:
@@ -1054,8 +1069,11 @@ def load_data_by_tag(request, o_type=None, o_id=None, **kwargs):
     except:
         index = 0
     
-    # prepare forms
-    filter_user_id = request.session.get('nav')['experimenter']
+    # filter by user and group...
+    filter_user_id = request.REQUEST.get("experimenter", None)
+    filter_group = request.REQUEST.get("group", None)
+    if filter_group:
+        conn.CONFIG['SERVICE_OPTS']['omero.group'] = str(filter_group)
     
     # prepare data
     kw = dict()
@@ -1071,7 +1089,7 @@ def load_data_by_tag(request, o_type=None, o_id=None, **kwargs):
         if o_type == "tag":
             manager.loadDataByTag()
             if view == "tree":
-                template = "webclient/data/container_tags_containers.html"
+                template = "webclient/data/tags_tree.html"
             elif view == "icon":
                 template = "webclient/data/containers_icon.html"
             elif view == "table":

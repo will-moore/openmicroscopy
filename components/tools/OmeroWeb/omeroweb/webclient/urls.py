@@ -45,6 +45,7 @@ urlpatterns = patterns('django.views.generic.simple',
     url( r'^active_group/$', views.change_active_group, name="change_active_group" ),
 
     # update users and groups in the current context
+    url( r'^config_groups/$', views.config_groups, name="config_groups" ),
     url( r'^config_experimenters/$', views.config_experimenters, name="config_experimenters" ),
     url( r'^load_users_config/(?P<group_id>[0-9]+)/$', views.load_experimenters, 
                 {'template':'webclient/data/users_config.html', 'show_all': True}, name="load_users_config" ),
@@ -91,7 +92,7 @@ urlpatterns = patterns('django.views.generic.simple',
     url( r'^annotation/(?P<action>[a-zA-Z]+)/(?P<iid>[0-9]+)/$', views.download_annotation, name="download_annotation" ),
     url( r'^archived_files/download/(?P<iid>[0-9]+)/$', views.archived_files, name="archived_files" ),
     
-    url( r'^load_tags/(?:(?P<o_type>((?i)tag|dataset))/(?P<o_id>[0-9]+)/)?$', views.load_data_by_tag, name="load_data_by_tag" ),
+    url( r'^load_tags/(?:(?P<o_type>((?i)tag|dataset))/(?P<o_id>[0-9]+)/)?$', views.load_tags, name="load_tags" ),
     url( r'^autocompletetags/$', views.autocomplete_tags, name="autocomplete_tags" ),
     
     # Open Astex Viewer will try to show file as volume, e.g. mrc.map file. 
