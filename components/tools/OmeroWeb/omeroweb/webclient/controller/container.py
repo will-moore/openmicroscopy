@@ -334,6 +334,17 @@ class BaseContainer(BaseController):
         if page is not None:
             self.paging = self.doPaging(page, len(im_list_with_counters), self.c_size)
     
+    def listGroupHierarchy(self, tree_groups):
+        # the groups that are displayed may be stored in 'tree_groups' map
+        gr_list_with_counters = list()
+        for group in self.conn.getObjects("ExperimenterGroup", self.conn.getEventContext().memberOfGroups):
+            group.experimenter_counter = len(list(group.copyGroupExperimenterMap()))
+            group.tree_groups = tree_groups
+            gr_list_with_counters.append(group)
+        gr_list_with_counters.sort(key=lambda x: x.getName() and x.getName().lower())
+        self.groups = gr_list_with_counters
+        self.c_size = len(gr_list_with_counters)
+    
     def listContainerHierarchy(self, eid=None):
         if eid is not None:
             self.experimenter = self.conn.getObject("Experimenter", eid)
