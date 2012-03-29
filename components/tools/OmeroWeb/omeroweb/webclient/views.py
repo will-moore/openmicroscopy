@@ -615,34 +615,14 @@ def load_template(request, menu, **kwargs):
     if menu == "search" and request.REQUEST.get('search_query'):
         init['query'] = str(request.REQUEST.get('search_query')).replace(" ", "%20")
 
-
     try:
         manager = BaseContainer(conn)
+        manager.listGroupHierarchy(tree_groups=request.session.get('tree_groups'))
     except AttributeError, x:
         logger.error(traceback.format_exc())
         return handlerInternalError(x)
-
-    # the groups that are displayed may be stored in 'tree_groups' map
-    tree_groups = request.session.get('tree_groups')
-    groupId = conn.getEventContext().groupId
     
-    def show_group(gid):
-        if tree_groups is None:
-            # if not, we check settings - display ALL or just current?
-            return settings.MULTI_GROUP or gid == groupId
-        else:
-            return gid in tree_groups
-
-    member_groups = []
-    gids = conn.getEventContext().memberOfGroups
-    for g in conn.getObjects("ExperimenterGroup", gids):
-        name = g.getName()
-        perms = g.getPermissionsAsString()
-        exp_count = len( list(g.copyGroupExperimenterMap()))
-        member_groups.append({"id":g.id, "name":name, "perms":perms, "show":show_group(g.id), "exp_count":exp_count})
-    member_groups.sort(key=lambda x: x['name'].lower())
-
-    context = {'nav':request.session['nav'], 'url':url, 'init':init, 'eContext':manager.eContext, 'member_groups': member_groups} 
+    context = {'nav':request.session['nav'], 'url':url, 'init':init, 'eContext':manager.eContext, 'manager': manager}
 
     t = template_loader.get_template(template)
     c = Context(request,context)
@@ -830,37 +810,18 @@ def load_groups(request, conn=None, **kwargs):
     This supplies data for the tree, via AJAX calls.
     The Groups at the base of the tree may be filtered according to 'tree_groups' in session.
     """
-
-    groupId = conn.getEventContext().groupId
-    userId = conn.getEventContext().userId
-
-    # we may store the user's preference for which groups and experimenters to show in tree
-    tree_groups = request.session.get('tree_groups')
-
-    context = {}
-
-    def show_group(gid):
-        if tree_groups is None:
-            # if not, we check settings - display ALL or just current?
-            return settings.MULTI_GROUP or gid == groupId
-        else:
-            return gid in tree_groups
-
-    groups = []
-    gids = conn.getEventContext().memberOfGroups
-    for g in conn.getObjects("ExperimenterGroup", gids):
-        name = g.getName()
-        perms = g.getPermissionsAsString()
-        exp_count = len( list(g.copyGroupExperimenterMap()))
-        groups.append({"id":g.id, "name":name, "perms":perms, "show":show_group(g.id), "exp_count":exp_count})
-    groups.sort(key=lambda x: x['name'].lower())
     
-    context['groups'] = groups
-    template = "webclient/data/groups_tree.html"
-
     # NB: because the conn will be used to call .countChildren() on all objects in the tree,
     # we have to make sure this is not restricted by the wrong group!
     conn.CONFIG['SERVICE_OPTS']['omero.group'] = "-1"
+    
+    # we may store the user's preference for which groups and experimenters to show in tree
+    manager = BaseContainer(conn)
+    manager.listGroupHierarchy(tree_groups=request.session.get('tree_groups'))
+
+    template = "webclient/data/groups_tree.html"
+    
+    context = {"manager":manager, "group_id":conn.getEventContext().groupId}
     t = template_loader.get_template(template)
     c = Context(request,context)
     logger.debug('TEMPLATE: '+template)

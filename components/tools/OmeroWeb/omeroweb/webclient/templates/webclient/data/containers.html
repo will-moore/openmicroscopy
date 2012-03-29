@@ -1043,12 +1043,12 @@
                 <div id="group_config" style="width: 200px; position:relative; left:0px; float:left">
                     <h3>Groups</h3>
                     <ul>
-                    {% for g in member_groups %}
-                        <li id="select_group-{{ g.id }}" class="select_group perms_{{ g.perms }}" style="padding: 10px; cursor:pointer">
-                            <input type="checkbox" {% if g.show %}checked="true"{% endif %} />
-                            <span class="group_name">{{ g.name }}</span>
-                            <span class="group_perms" style="display: none">{{ g.perms }}</span>
-                            <span class="exp_count" style="display:none">{{ g.exp_count }}</span>
+                    {% for group in manager.groups %}
+                        <li id="select_group-{{ group.id }}" class="select_group perms_{{ group.details.permissions }}" style="padding: 10px; cursor:pointer">
+                            <input type="checkbox" {% if group.show_group %}checked="true"{% endif %} />
+                            <span class="group_name">{{ group.name }}</span>
+                            <span class="group_perms" style="display: none">{{ group.details.permissions }}</span>
+                            <span class="exp_count" style="display:none">{{ group.experimenter_counter }}</span>
                             <div style="float:right; border:solid gray 1px; padding: 3px" class="config_users">Users >></div>
                         </li>
                     {% endfor %}

@@ -23,13 +23,13 @@
 
 
 <ul>
-{% for group in groups %}
-    {% if group.show %}
-    <li id="group-{{ group.id }}" rel="group_{{ group.perms }}" {% if group.exp_count %}class="jstree-closed"{% endif %}>
+{% for group in manager.groups %}
+    {% if group.show_group %}
+    <li id="group-{{ group.id }}" rel="group_{{ group.details.permissions }}" {% if group.experimenter_counter %}class="jstree-closed"{% endif %}>
         <a href="#">
             <span class="node_name">{{ group.name }}</span>
-            {% if group.exp_count %}
-                <span class="children_count">{{ group.exp_count }}</span>
+            {% if group.experimenter_counter %}
+                <span class="children_count">{{ group.experimenter_counter }}</span>
             {% endif %}
         </a>
     </li>
