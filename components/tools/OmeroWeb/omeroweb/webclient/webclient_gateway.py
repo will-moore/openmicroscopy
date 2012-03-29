@@ -1738,8 +1738,32 @@ class ExperimenterGroupWrapper (OmeroWebObjectWrapper, omero.gateway.Experimente
     and extend OmeroWebObjectWrapper.
     """
     
+    experimenter_counter = None
+    tree_groups = None
+    
+    def __prepare__ (self, **kwargs):
+        super(ExperimenterGroupWrapper, self).__prepare__(**kwargs)
+        if kwargs.has_key('experimenter_counter'):
+            self.experimenter_counter = kwargs['experimenter_counter']
+    
     def isEditable(self):
+        """
+        Tests curent group if is one of system groups "guest" or "user".
+        
+        """
         return self.name.lower() not in ('guest', 'user')
+
+    def show_group(self):
+        """
+        Tests curent group with criteria stored in the tree_groups dictionary
+        {u'1': set([1L]), u'5': set([2L]), u'5': set([3L, 4L])}
+        
+        """
+        if self.tree_groups is None:
+            # if not, we check settings - display ALL or just current?
+            return settings.MULTI_GROUP or self.id == self._conn.getEventContext().groupId
+        else:
+            return self.id in self.tree_groups
 
 omero.gateway.ExperimenterGroupWrapper = ExperimenterGroupWrapper 
 
