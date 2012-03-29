@@ -1726,6 +1726,12 @@ class ExperimenterWrapper (OmeroWebObjectWrapper, omero.gateway.ExperimenterWrap
     omero_model_ExperimenterI class wrapper overwrite omero.gateway.ExperimenterWrapper
     and extend OmeroWebObjectWrapper.
     """
+    data_counter = None
+    
+    def __prepare__ (self, **kwargs):
+        super(ExperimenterWrapper, self).__prepare__(**kwargs)
+        if kwargs.has_key('data_counter'):
+            self.data_counter = kwargs['data_counter']
     
     def isEditable(self):
         return self.omeName.lower() not in ('guest')
