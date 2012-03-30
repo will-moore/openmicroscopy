@@ -1728,6 +1728,23 @@ class ExperimenterWrapper (OmeroWebObjectWrapper, omero.gateway.ExperimenterWrap
         if kwargs.has_key('data_counter'):
             self.data_counter = kwargs['data_counter']
     
+    def countData(self, group_id=None):
+        """
+        Counts top level data for user.
+        WARNING: that methods should only be used with single user request. 
+        If you need to count top level data for more then one user use OmeroWebGateway.countOrphans.
+        """
+        c_pr = self._conn.countOrphans("Project", eids=[self.id], gid=group_id)
+        c_ds = self._conn.countOrphans("Dataset", eids=[self.id], gid=group_id)
+        c_im = self._conn.countOrphans("Image", eids=[self.id], gid=group_id)
+        c_sc = self._conn.countOrphans("Screen", eids=[self.id], gid=group_id)
+        c_pl = self._conn.countOrphans("Plate", eids=[self.id], gid=group_id)
+        return {"project": ((c_pr is not None) and c_pr[long(eid)] or 0),
+                "dataset": ((c_ds is not None) and c_ds[long(eid)] or 0),
+                "image": ((c_ds is not None) and c_ds[long(eid)] or 0),
+                "screen": ((c_ds is not None) and c_ds[long(eid)] or 0),
+                "plate": ((c_ds is not None) and c_ds[long(eid)] or 0)}
+    
     def isEditable(self):
         return self.omeName.lower() not in ('guest')
 
