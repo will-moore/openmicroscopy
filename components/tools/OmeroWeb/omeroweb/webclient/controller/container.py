@@ -398,7 +398,8 @@ class BaseContainer(BaseController):
         sc_list_with_counters.sort(key=lambda x: x.getName() and x.getName().lower())
         pl_list_with_counters.sort(key=lambda x: x.getName() and x.getName().lower())
 
-        self.orphans = self.conn.countOrphans("Image", eid)
+        r = self.conn.countOrphans("Image", eids=[eid])
+        self.orphans = (r is not None) and r[long(eid)] or 0
         
         self.containers={'projects': pr_list_with_counters, 'datasets': ds_list_with_counters, 'screens': sc_list_with_counters, 'plates': pl_list_with_counters}
         self.c_size = len(pr_list_with_counters)+len(ds_list_with_counters)+len(sc_list_with_counters)+len(pl_list_with_counters)
@@ -424,7 +425,8 @@ class BaseContainer(BaseController):
         im_list_with_counters = im_list
         im_list_with_counters.sort(key=lambda x: x.getName().lower())
         self.containers = {'orphaned': True, 'images': im_list_with_counters}
-        self.c_size = self.conn.countOrphans("Image", eid=eid)
+        r = self.conn.countOrphans("Image", eids=[eid])
+        self.c_size = (r is not None) and r[long(eid)] or 0
         
         if page is not None:
             self.paging = self.doPaging(page, len(im_list_with_counters), self.c_size)

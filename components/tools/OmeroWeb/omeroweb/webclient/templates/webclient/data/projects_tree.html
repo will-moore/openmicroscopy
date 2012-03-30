@@ -105,6 +105,12 @@
         </li>
     {% endfor %}
     
-    <li id='orphaned-0' rel="orphaned" {% if manager.orphans %}class="jstree-closed"{% endif %}><a href="#">Orphaned images</a></li>
+    <li id='orphaned-0' rel="orphaned" {% if manager.orphans %}class="jstree-closed"{% endif %}>
+        <a href="#">Orphaned images
+            {% if manager.orphans %}
+                <span class="children_count">{{ manager.orphans }}</span>
+            {% endif %}
+        </a>
+    </li>
     
 </ul>

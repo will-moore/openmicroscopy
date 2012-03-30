@@ -384,54 +384,54 @@ class OmeroWebGateway (omero.gateway.BlitzGateway):
         for ann in q.findAllByQuery(sql, params, self.CONFIG['SERVICE_OPTS']):
             yield TagAnnotationWrapper(self, ann)
     
-    def countOrphans (self, obj_type, eid=None):
+    def countOrphans (self, obj_type, eids=None, gid=None):
         links = {'Dataset':('ProjectDatasetLink', DatasetWrapper), 
                 'Image':('DatasetImageLink', ImageWrapper),
                 'Plate':('ScreenPlateLink', PlateWrapper)}
         
         if obj_type not in links:
             raise TypeError("'%s' is not valid object type. Must use one of %s" % (obj_type, links.keys()) )
-            
+        
         q = self.getQueryService()
         p = omero.sys.Parameters()
         p.map = {}
-        
-        links = {'Dataset':('ProjectDatasetLink', DatasetWrapper), 
-                'Image':('DatasetImageLink', ImageWrapper),
-                'Plate':('ScreenPlateLink', PlateWrapper)}
         
         if obj_type not in links:
             raise TypeError("'%s' is not valid object type. Must use one of %s" % (obj_type, links.keys()) )
-            
+        
         q = self.getQueryService()
         p = omero.sys.Parameters()
         p.map = {}
         
-        if eid is not None:
-            p.map["eid"] = rlong(long(eid))
-            eidFilter = "obj.details.owner.id=:eid and " 
-            eidWsFilter = " and ws.details.owner.id=:eid"
+        if eids is not None and len(eids) > 0:
+            p.map["eids"] = rlist([rlong(long(e)) for e in eids])
+            eidFilter = "obj.details.owner.id in (:eids) and " 
         else:
             eidFilter = ""
             eidWsFilter = ""
         
-        sql = "select count(obj.id) from %s as obj " \
+        sql = "select obj.details.owner.id, count(obj.id) from %s as obj " \
                 "join obj.details.creationEvent "\
                 "join obj.details.owner join obj.details.group " \
-                "where %s" \
+                "where %s " \
                 "not exists (select obl from %s as obl where " \
                 "obl.child=obj.id)" % (obj_type, eidFilter, links[obj_type][0])
         if obj_type == 'Image':
             sql += "and not exists ( "\
                 "select ws from WellSample as ws "\
-                "where ws.image=obj.id %s)" % eidWsFilter
+                "where ws.image=obj.id)"
         
-        rslt = q.projection(sql, p)
-        if len(rslt) > 0:
-            if len(rslt[0]) > 0:
-                return rslt[0][0].val
-        return 0
-            
+        sql += " group by obj.details.owner.id"
+        rslt = q.projection(sql, p, {"omero.group":str(gid)})
+        rv = unwrap(rslt)
+        
+        result = dict()
+        if rv is not None and len(rv)>0:
+            for r in rv:
+                if len(r) > 0:
+                    result[r[0]] = r[1]
+                return result
+        return None
     
     def listOrphans (self, obj_type, eid=None, page=None):
         """
