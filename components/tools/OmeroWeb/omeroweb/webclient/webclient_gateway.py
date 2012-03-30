@@ -416,7 +416,7 @@ class OmeroWebGateway (omero.gateway.BlitzGateway):
         
         sql += " group by obj.details.owner.id"
         
-        og = (gid is None) and {"omero.group":str(gid)} or None
+        og = (gid is not None) and {"omero.group":str(gid)} or None
         rslt = q.projection(sql, p, og)
         rv = unwrap(rslt)
         
