@@ -1728,12 +1728,20 @@ class ExperimenterWrapper (OmeroWebObjectWrapper, omero.gateway.ExperimenterWrap
         if kwargs.has_key('data_counter'):
             self.data_counter = kwargs['data_counter']
     
-    def countData(self, group_id=None):
+    def countData(self, obj_type=None, group_id=None):
         """
         Counts top level data for user.
         WARNING: that methods should only be used with single user request. 
         If you need to count top level data for more then one user use OmeroWebGateway.countOrphans.
         """
+        o_types = ('Project','Dataset','Image','Screen','Plate')
+        
+        if obj_type is not None:
+            if obj_type.title() in o_types:
+                c_ot = self._conn.countOrphans("Project", eids=[self.id], gid=group_id)
+                return {obj_type.lower(): ((c_ot is not None) and c_ot[long(eid)] or 0)}
+            raise TypeError("'%s' is not valid object type. Must use one of %s" % (obj_type, o_types) )
+        
         c_pr = self._conn.countOrphans("Project", eids=[self.id], gid=group_id)
         c_ds = self._conn.countOrphans("Dataset", eids=[self.id], gid=group_id)
         c_im = self._conn.countOrphans("Image", eids=[self.id], gid=group_id)
