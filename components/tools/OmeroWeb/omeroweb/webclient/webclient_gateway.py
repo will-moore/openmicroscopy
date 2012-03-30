@@ -388,14 +388,7 @@ class OmeroWebGateway (omero.gateway.BlitzGateway):
         links = {'Dataset':('ProjectDatasetLink', DatasetWrapper), 
                 'Image':('DatasetImageLink', ImageWrapper),
                 'Plate':('ScreenPlateLink', PlateWrapper)}
-        
-        if obj_type not in links:
-            raise TypeError("'%s' is not valid object type. Must use one of %s" % (obj_type, links.keys()) )
-        
-        q = self.getQueryService()
-        p = omero.sys.Parameters()
-        p.map = {}
-        
+
         if obj_type not in links:
             raise TypeError("'%s' is not valid object type. Must use one of %s" % (obj_type, links.keys()) )
         
@@ -422,7 +415,9 @@ class OmeroWebGateway (omero.gateway.BlitzGateway):
                 "where ws.image=obj.id)"
         
         sql += " group by obj.details.owner.id"
-        rslt = q.projection(sql, p, {"omero.group":str(gid)})
+        
+        og = (gid is None) and {"omero.group":str(gid)} or None
+        rslt = q.projection(sql, p, og)
         rv = unwrap(rslt)
         
         result = dict()
