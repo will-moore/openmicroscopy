@@ -5428,17 +5428,17 @@ class _ImageWrapper (BlitzObjectWrapper):
         
         pid = self.getPrimaryPixels().id
         re = self._conn.createRenderingEngine()
-        re.lookupPixels(pid, self._conn.CONFIG['SERVICE_OPTS'])
+        sopts = dict(self._conn.CONFIG['SERVICE_OPTS'] or {})
+        sopts['omero.group'] = str(self.getDetails().getGroup().getId())
+        re.lookupPixels(pid, sopts)
         rdid = self._getRDef()
         if rdid is None:
-            if not re.lookupRenderingDef(pid, self._conn.CONFIG['SERVICE_OPTS']):
-                sopts = dict(self._conn.CONFIG['SERVICE_OPTS'] or {})
-                sopts['omero.group'] = str(self.getDetails().getGroup().getId())
+            if not re.lookupRenderingDef(pid, sopts):
                 re.resetDefaults(sopts)
-                re.lookupRenderingDef(pid, self._conn.CONFIG['SERVICE_OPTS'])
-                self._onResetDefaults(re.getRenderingDefId(self._conn.CONFIG['SERVICE_OPTS']))
+                re.lookupRenderingDef(pid, sopts)
+                self._onResetDefaults(re.getRenderingDefId(sopts))
         else:
-            re.loadRenderingDef(rdid, self._conn.CONFIG['SERVICE_OPTS'])
+            re.loadRenderingDef(rdid, sopts)
         re.load()
         return re
 
@@ -5658,11 +5658,13 @@ class _ImageWrapper (BlitzObjectWrapper):
         pid = self.getPrimaryPixels().id
         rdid = self._getRDef()
         tb = self._conn.createThumbnailStore()
-        has_rendering_settings = tb.setPixelsId(pid, self._conn.CONFIG['SERVICE_OPTS'])
+        sopts = dict(self._conn.CONFIG['SERVICE_OPTS'] or {})
+        sopts['omero.group'] = str(self.getDetails().getGroup().getId())
+        has_rendering_settings = tb.setPixelsId(pid, sopts)
         logger.debug("tb.setPixelsId(%d) = %s " % (pid, str(has_rendering_settings)))
         if rdid is not None:
             try:
-                tb.setRenderingDefId(rdid, self._conn.CONFIG['SERVICE_OPTS'])
+                tb.setRenderingDefId(rdid, sopts)
             except omero.ValidationException:
                 # The annotation exists, but not the rendering def?
                 logger.error('IMG %d, defrdef == %d but object does not exist?' % (self.getId(), rdid))
@@ -5670,8 +5672,6 @@ class _ImageWrapper (BlitzObjectWrapper):
         if rdid is None:
             if not has_rendering_settings:
                 try:
-                    sopts = dict(self._conn.CONFIG['SERVICE_OPTS'] or {})
-                    sopts['omero.group'] = str(self.getDetails().getGroup().getId())
                     tb.resetDefaults(sopts)      # E.g. May throw Missing Pyramid Exception
                 except omero.ConcurrencyException, ce:
                     logger.info( "ConcurrencyException: resetDefaults() failed in _prepareTB with backOff: %s" % ce.backOff)
