@@ -385,7 +385,19 @@ class OmeroWebGateway (omero.gateway.BlitzGateway):
             yield TagAnnotationWrapper(self, ann)
     
     def countOrphans (self, obj_type, eids=None, gid=None):
-        links = {'Dataset':('ProjectDatasetLink', DatasetWrapper), 
+        """
+        Count orphaned objects for the givin type and experimenter ids and group
+        
+        @param obj_type:    'Project', 'Screen', 'Dataset', 'Image', 'Plate'
+        @param eids:        list of experimetner ids
+        @type gid:          Long
+        @return:            dictionary of counters
+        @rtype:             dict
+        """
+        
+        links = {'Project': None,
+                'Screen': None,
+                'Dataset':('ProjectDatasetLink', DatasetWrapper), 
                 'Image':('DatasetImageLink', ImageWrapper),
                 'Plate':('ScreenPlateLink', PlateWrapper)}
 
@@ -398,7 +410,7 @@ class OmeroWebGateway (omero.gateway.BlitzGateway):
         
         if eids is not None and len(eids) > 0:
             p.map["eids"] = rlist([rlong(long(e)) for e in eids])
-            eidFilter = "obj.details.owner.id in (:eids) and " 
+            eidFilter = "obj.details.owner.id in (:eids) " 
         else:
             eidFilter = ""
             eidWsFilter = ""
@@ -406,20 +418,21 @@ class OmeroWebGateway (omero.gateway.BlitzGateway):
         sql = "select obj.details.owner.id, count(obj.id) from %s as obj " \
                 "join obj.details.creationEvent "\
                 "join obj.details.owner join obj.details.group " \
-                "where %s " \
-                "not exists (select obl from %s as obl where " \
-                "obl.child=obj.id)" % (obj_type, eidFilter, links[obj_type][0])
+                "where %s " % (obj_type, eidFilter)
+        if links[obj_type] is not None:
+            if len(eidFilter) > 0:
+                sql += " and "
+            sql += "not exists (select obl from %s as obl where " \
+                "obl.child=obj.id)" % (links[obj_type][0])
         if obj_type == 'Image':
             sql += "and not exists ( "\
                 "select ws from WellSample as ws "\
                 "where ws.image=obj.id)"
         
         sql += " group by obj.details.owner.id"
-        
         og = (gid is not None) and {"omero.group":str(gid)} or None
         rslt = q.projection(sql, p, og)
         rv = unwrap(rslt)
-        
         result = dict()
         if rv is not None and len(rv)>0:
             for r in rv:
