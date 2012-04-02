@@ -345,6 +345,21 @@ class BaseContainer(BaseController):
         self.groups = gr_list_with_counters
         self.c_size = len(gr_list_with_counters)
     
+    def listExperimenterHierarchy(self, tree_groups=None, gid=None, show_all=False):
+        exp_list_with_counters = list()
+        for exp in self.conn.containedExperimenters(gid):
+            exp.curent_group = long(gid)
+            if (show_all or exp.show_experimenter()):
+                exp.sumCounts()
+                exp.tree_groups = tree_groups
+                exp_list_with_counters.append(exp)
+        exp_list_with_counters.sort(key=lambda x: x.getName() and x.getName().lower())
+        self.experimenters = exp_list_with_counters
+        self.c_size = len(exp_list_with_counters)
+        
+        # experimenters.append({"id":exp.id, "name":exp.getFullName(), "lastName":exp.lastName, 
+        #                "show":show_experimenter(exp.id), "project_count":project_count})
+        
     def listContainerHierarchy(self, eid=None):
         if eid is not None:
             self.experimenter = self.conn.getObject("Experimenter", eid)
