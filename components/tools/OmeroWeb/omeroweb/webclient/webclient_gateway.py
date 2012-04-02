@@ -1809,6 +1809,8 @@ class ExperimenterGroupWrapper (OmeroWebObjectWrapper, omero.gateway.Experimente
         super(ExperimenterGroupWrapper, self).__prepare__(**kwargs)
         if kwargs.has_key('experimenter_counter'):
             self.experimenter_counter = kwargs['experimenter_counter']
+        if kwargs.has_key('tree_groups'):
+            self.tree_groups = kwargs['tree_groups']
     
     def isEditable(self):
         """
