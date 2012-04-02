@@ -764,38 +764,12 @@ def load_experimenters(request, group_id, show_all=False, conn=None, **kwargs):
     
     @param show_all:    Return ALL experimenters (not just those in session / settings)
     """
-    
-    group_id = int(group_id)
-    userId = conn.getEventContext().userId
-    child_type= request.REQUEST.get("child_type", "project")
-    tree_groups = request.session.get('tree_groups')
-    
-    def show_experimenter(eid):
-        if tree_groups is None or group_id not in tree_groups:
-            # if not, we check settings - display ALL or just current?
-            return settings.MULTI_USER or eid == userId
-        else:
-            return eid in tree_groups[group_id]
-
-    def get_child_count(eid):
-        if child_type == "project":
-            return len( list(conn.listProjects(eid)) )    # get the project count for this user in this group
-        elif child_type == "tag":
-            manager= BaseContainer(conn)
-            manager.loadTags(eid)
-            return len(manager.tags)
-
     conn.CONFIG['SERVICE_OPTS']['omero.group'] = str(group_id)
-    experimenters = []
-    for exp in conn.containedExperimenters(group_id):
-        if not (show_all or show_experimenter(exp.id)):
-            continue
-        project_count = get_child_count(exp.id)   # get the project count for this user in this group
-        experimenters.append({"id":exp.id, "name":exp.getFullName(), "lastName":exp.lastName, 
-                    "show":show_experimenter(exp.id), "project_count":project_count})
-    experimenters.sort(key=lambda x: x['lastName'].lower())
-    #conn.CONFIG['SERVICE_OPTS']['omero.group'] = "-1"
-    context = {"experimenters":experimenters, "group_id":group_id}
+    
+    manager = BaseContainer(conn)
+    manager.listExperimenterHierarchy(tree_groups=request.session.get('tree_groups'), gid=long(group_id), show_all=show_all)
+    
+    context = {"manager":manager, "group_id":group_id}
     if 'template' in kwargs:
         t = template_loader.get_template(kwargs['template'])
         c = Context(request, context)
@@ -818,7 +792,7 @@ def load_groups(request, conn=None, **kwargs):
     # we may store the user's preference for which groups and experimenters to show in tree
     manager = BaseContainer(conn)
     manager.listGroupHierarchy(tree_groups=request.session.get('tree_groups'))
-
+    
     template = "webclient/data/groups_tree.html"
     
     context = {"manager":manager, "group_id":conn.getEventContext().groupId}
