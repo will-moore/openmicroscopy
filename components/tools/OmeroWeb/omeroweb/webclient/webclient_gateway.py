@@ -1735,15 +1735,40 @@ class ExperimenterWrapper (OmeroWebObjectWrapper, omero.gateway.ExperimenterWrap
     and extend OmeroWebObjectWrapper.
     """
     data_counter = None
+    tree_groups = None
+    curent_group = None
     
     def __prepare__ (self, **kwargs):
         super(ExperimenterWrapper, self).__prepare__(**kwargs)
         if kwargs.has_key('data_counter'):
             self.data_counter = kwargs['data_counter']
+        if kwargs.has_key('tree_groups'):
+            self.tree_groups = kwargs['tree_groups']
+        if kwargs.has_key('curent_group'):
+            self.curent_group = kwargs['curent_group']
     
-    def countData(self, obj_type=None, group_id=None):
+    def show_experimenter(self):
         """
-        Counts top level data for user.
+        Tests curent experimenter with criteria stored in the tree_groups dictionary
+        for given group {u'1': set([1L]), u'5': set([2L]), u'5': set([3L, 4L])}
+        """
+        if self.tree_groups is None or self.curent_group not in self.tree_groups:
+            # if not, we check settings - display ALL or just current?
+            return settings.MULTI_USER or self.id == self._conn.getEventContext().userId
+        else:
+            return self.id in self.tree_groups[self.curent_group]
+    
+    def sumCounts(self):
+        """
+        Sum all of top level data for user (excluding images).
+        WARNING: that methods should only be used with single user request. 
+        If you need to count top level data for more then one user use OmeroWebGateway.countOrphans.
+        """
+        self.data_counter = sum([i for i in self.countData().values()]) 
+    
+    def countData(self, obj_type=None):
+        """
+        Counts top level data for user (excluding images).
         WARNING: that methods should only be used with single user request. 
         If you need to count top level data for more then one user use OmeroWebGateway.countOrphans.
         """
@@ -1751,25 +1776,25 @@ class ExperimenterWrapper (OmeroWebObjectWrapper, omero.gateway.ExperimenterWrap
         
         if obj_type is not None:
             if obj_type.title() in o_types:
-                c_ot = self._conn.countOrphans("Project", eids=[self.id], gid=group_id)
+                c_ot = self._conn.countOrphans("Project", eids=[self.id], gid=self.curent_group)
                 return {obj_type.lower(): ((c_ot is not None) and c_ot[long(eid)] or 0)}
             raise TypeError("'%s' is not valid object type. Must use one of %s" % (obj_type, o_types) )
         
-        c_pr = self._conn.countOrphans("Project", eids=[self.id], gid=group_id)
-        c_ds = self._conn.countOrphans("Dataset", eids=[self.id], gid=group_id)
-        c_im = self._conn.countOrphans("Image", eids=[self.id], gid=group_id)
-        c_sc = self._conn.countOrphans("Screen", eids=[self.id], gid=group_id)
-        c_pl = self._conn.countOrphans("Plate", eids=[self.id], gid=group_id)
-        return {"project": ((c_pr is not None) and c_pr[long(eid)] or 0),
-                "dataset": ((c_ds is not None) and c_ds[long(eid)] or 0),
-                "image": ((c_ds is not None) and c_ds[long(eid)] or 0),
-                "screen": ((c_ds is not None) and c_ds[long(eid)] or 0),
-                "plate": ((c_ds is not None) and c_ds[long(eid)] or 0)}
+        c_pr = self._conn.countOrphans("Project", eids=[self.id], gid=self.curent_group)
+        c_ds = self._conn.countOrphans("Dataset", eids=[self.id], gid=self.curent_group)
+        #c_im = self._conn.countOrphans("Image", eids=[self.id], gid=self.curent_group)
+        c_sc = self._conn.countOrphans("Screen", eids=[self.id], gid=self.curent_group)
+        c_pl = self._conn.countOrphans("Plate", eids=[self.id], gid=self.curent_group)
+        return {"project": ((c_pr is not None) and c_pr[long(self.id)] or 0),
+                "dataset": ((c_ds is not None) and c_ds[long(self.id)] or 0),
+                #"image": ((c_im is not None) and c_im[long(self.id)] or 0),
+                "screen": ((c_sc is not None) and c_sc[long(self.id)] or 0),
+                "plate": ((c_pl is not None) and c_pl[long(self.id)] or 0)}
     
     def isEditable(self):
         return self.omeName.lower() not in ('guest')
 
-omero.gateway.ExperimenterWrapper = ExperimenterWrapper 
+omero.gateway.ExperimenterWrapper = ExperimenterWrapper
 
 class ExperimenterGroupWrapper (OmeroWebObjectWrapper, omero.gateway.ExperimenterGroupWrapper): 
     """
