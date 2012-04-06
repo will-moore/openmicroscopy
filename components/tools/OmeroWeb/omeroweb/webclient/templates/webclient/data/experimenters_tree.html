@@ -23,13 +23,13 @@
 
 
 <ul>
-{% for e in experimenters %}
-    {% if e.show %}
-    <li id="experimenter-{{ e.id }}-group-{{ group_id }}" rel="experimenter" {% if e.project_count %}class="jstree-closed"{% endif %}>
+{% for exp in manager.experimenters %}
+    {% if exp.show_experimenter %}
+    <li id="experimenter-{{ exp.id }}-group-{{ group_id }}" rel="experimenter" {% if exp.data_counter %}class="jstree-closed"{% endif %}>
         <a href="#">
-            <span class="node_name">{{ e.name }}</span>
-            {% if e.project_count %}
-                <span class="children_count">{{ e.project_count }}</span>
+            <span class="node_name">{{ exp.getFullName }}</span>
+            {% if exp.data_counter %}
+                <span class="children_count">{{ exp.data_counter }}</span>
             {% endif %}
         </a>
     </li>

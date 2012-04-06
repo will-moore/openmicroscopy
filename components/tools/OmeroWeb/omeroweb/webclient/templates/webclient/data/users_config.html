@@ -23,12 +23,12 @@
 
 
 <ul>
-{% for exp in experimenters %}
+{% for exp in manager.experimenters %}
     <li id="select_user-{{ exp.id }}" class="select_user" style="padding: 10px; cursor:pointer">
         
         <input type="checkbox" {% if exp.show %}checked="true"{% endif %} />
-        <span class="experimenter_name">{{ exp.name }}</span>
-        <span class="project_count" style="display:none">{{ exp.project_count }}</span>
+        <span class="experimenter_name">{{ exp.getFullName }}</span>
+        <span class="project_count" style="display:none">{{ exp.data_counter }}</span>
         
     </li>
 {% endfor %}
