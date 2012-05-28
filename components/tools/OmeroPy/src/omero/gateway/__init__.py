@@ -7050,6 +7050,33 @@ class _ImageWrapper (BlitzObjectWrapper):
         for l in links:
             yield OriginalFileWrapper(self._conn, l.parent)
 
+    def hasAnyROI(self, roitype = None):
+        """
+        Check if an image contains any ROI of a given type
+        
+        @param roitype:         String or list specifiying a ROI type ("Rect",...). All ROI types if empty.
+        @return:                Boolean. True if any ROI of given type is present.
+        """
+          
+        # Create ROI type validator
+        def isValidType(shape):
+            if not roitype:
+                return True
+            elif isinstance(roitype,list):
+                for t in roitype:
+                    if isinstance(shape,getattr(omero.model,t)):
+                        return True
+            elif isinstance(shape,getattr(omero.model,roitype)):
+                return True
+            return False
+        
+        result = self._conn.getRoiService().findByImage(self.getPixelsId(), None)
+        for roi in result.rois:
+            for shape in roi.copyShapes():
+                if isValidType(shape): 
+                    return True
+        return False
+
 ImageWrapper = _ImageWrapper
 
 ## INSTRUMENT AND ACQUISITION ##
