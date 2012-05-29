@@ -7064,7 +7064,7 @@ class _ImageWrapper (BlitzObjectWrapper):
             if not eid:
                 return True
             else:
-                return shape.getDetails().getOwner() == self._conn._userid
+                return shape.getDetails().getOwner().id.val == self._conn._userid
         
         # Create ROI type validator
         def isValidType(shape):
