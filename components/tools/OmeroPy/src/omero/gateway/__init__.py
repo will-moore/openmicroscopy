@@ -7078,7 +7078,7 @@ class _ImageWrapper (BlitzObjectWrapper):
                 return True
             return False
         
-        result = self._conn.getRoiService().findByImage(self.getPixelsId(), None)
+        result = self._conn.getRoiService().findByImage(self.id, None)
         count = 0
         for roi in result.rois:
             for shape in roi.copyShapes():

@@ -32,6 +32,32 @@ class TestRois(lib.ITest):
 
         svc = self.client.sf.getRoiService()
         res = svc.findByImage(img.id.val, None)
+    
+    def testGetROICount(self):
+        """
+        Test ROI counting method
+        """
+        
+        img = self.new_image("")
+        roi1 = omero.model.RoiI()
+        roi1.addShape(omero.model.RectI())
+        roi1.addShape(omero.model.EllipseI())
+        img.addRoi(roi1)
+        roi2 = omero.model.RoiI()
+        roi2.addShape(omero.model.RectI())
+        img.addRoi(roi2)
+        img = self.update.saveAndReturnObject(img)
+
+        from omero.gateway import ImageWrapper, BlitzGateway
+        
+        conn = BlitzGateway(client_obj = self.client)
+        wrapper = ImageWrapper(conn, img)
+        
+        self.assertEqual(wrapper.getROICount(),3)
+        self.assertEqual(wrapper.getROICount("Rect"),2)
+        self.assertEqual(wrapper.getROICount("Ellipse"),1)
+        self.assertEqual(wrapper.getROICount("Line"),0)
+        self.assertEqual(wrapper.getROICount(["Rect","Ellipse"]),3)
 
 if __name__ == '__main__':
     unittest.main()
