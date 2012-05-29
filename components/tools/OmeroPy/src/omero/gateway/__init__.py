@@ -7050,14 +7050,22 @@ class _ImageWrapper (BlitzObjectWrapper):
         for l in links:
             yield OriginalFileWrapper(self._conn, l.parent)
 
-    def hasAnyROI(self, roitype = None):
+    def getROICount(self, roitype=None, eid=None):
         """
-        Check if an image contains any ROI of a given type
+        Count number of ROIs associated to an image
         
-        @param roitype:         String or list specifiying a ROI type ("Rect",...). All ROI types if empty.
-        @return:                Boolean. True if any ROI of given type is present.
+        @param roitype:     Specify a ROI type ("Rect",...) or any ROI if empty.
+        @param eid:         Filter ROIs by owner ID
+        @return:            True if any ROI of given type is present.
         """
           
+        # Create ROI owner validator (instead of roiOptions see #8990)
+        def isValidOwner(shape):
+            if not eid:
+                return True
+            else:
+                return shape.getDetails().getOwner() == self._conn._userid
+        
         # Create ROI type validator
         def isValidType(shape):
             if not roitype:
@@ -7071,11 +7079,12 @@ class _ImageWrapper (BlitzObjectWrapper):
             return False
         
         result = self._conn.getRoiService().findByImage(self.getPixelsId(), None)
+        count = 0
         for roi in result.rois:
             for shape in roi.copyShapes():
-                if isValidType(shape): 
-                    return True
-        return False
+                if isValidType(shape) and isValidOwner(shape): 
+                    count += 1
+        return count
 
 ImageWrapper = _ImageWrapper
 
