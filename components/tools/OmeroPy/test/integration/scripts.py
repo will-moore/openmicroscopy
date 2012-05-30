@@ -443,5 +443,128 @@ client.closeSession()
         finally:
             impl.cleanup()
 
+def assign(f, script, testName=""):
+    name = "test%s%s%s" % (testName, script[0].upper(), script[1:])
+    f.func_name = name
+    setattr(TestScripts, name, f)
+
+def runScript(client,script,scriptParams):
+    results = None
+    try:
+        scriptService = client.sf.getScriptService()
+        scriptID = scriptService.getScriptID("/omero/figure_scripts/" + script + ".py")
+        process = scriptService.runScript(scriptID, scriptParams, None)
+        
+        cb = omero.scripts.ProcessCallbackI(client, process)
+        while not cb.block(1000): # ms.
+            pass
+            cb.close()
+        
+        results = process.getResults(0)    # ms
+    finally:
+        process.close(False)
+        return results
+
+def make_test_invalidID(script, *args):
+    def f(self):
+        scriptParams = {"IDs": rlist(rlong(-1)),"Data_Type": rstring("Image")}
+        results = runScript(self.client,script,scriptParams)
+        self.assertFalse( "File_Annotation" in results)
+    assign(f, script, "InvalidID")
+    
+def make_test_simpleImage(script, *args):
+    def f(self):
+        # Create test image
+        img = self.createTestImage(session=self.client.sf)
+        img = self.update.saveAndReturnObject(img)
+        
+        scriptParams = {"IDs": rlist(rlong(img.id.val)),"Data_Type": rstring("Image")}
+        results = runScript(self.client,script,scriptParams)
+        
+        if args[0]:
+            self.assertTrue( "File_Annotation" in results)
+            fileAnnotation = results["File_Annotation"]
+            self.assertTrue(fileAnnotation.val._file._size._val>0)
+        else:
+            self.assertFalse("File_Annotation" in results)
+    assign(f, script, "SimpleImage")
+
+def make_test_simpleImageWithROI(script, *args):
+    def f(self):
+        # Create test image
+        img = self.createTestImage(session=self.client.sf)
+        img = self.update.saveAndReturnObject(img)
+
+        # Create ROI
+        roi = omero.model.RoiI()
+        rect = omero.model.RectI()
+        rect.setX(rdouble(10));
+        rect.setY(rdouble(10));
+        rect.setWidth(rdouble(10));
+        rect.setHeight(rdouble(10));
+        rect.setTheZ(rint(0));
+        rect.setTheT(rint(0));
+        roi.addShape(rect)
+        roi.setImage(img)
+        roi  = self.update.saveAndReturnObject(roi)
+        
+        scriptParams = {"IDs": rlist(rlong(img.id.val)),"Data_Type": rstring("Image")}
+        results = runScript(self.client,script,scriptParams)
+
+        self.assertTrue( "File_Annotation" in results)
+        fileAnnotation = results["File_Annotation"]
+        self.assertTrue(fileAnnotation.val._file._size._val>0)
+    assign(f, script, "SimpleImageWithROI")
+    
+def make_test_sharedImageWithROI(script, *args):
+    def f(self):
+        # Create read only group with two member
+        group = self.new_group(perms="rwr---")
+        owner = self.new_client(group=group) # Owner of share
+        member = self.new_client(group=group) # Member of group
+        
+        # Create image and ROI owned by owner
+        img = self.createTestImage(session=owner.sf)
+        img = owner.sf.getUpdateService().saveAndReturnObject(img)
+          
+        roi = omero.model.RoiI()
+        rect = omero.model.RectI()
+        rect.setX(rdouble(10));
+        rect.setY(rdouble(10));
+        rect.setWidth(rdouble(10));
+        rect.setHeight(rdouble(10));
+        rect.setTheZ(rint(0));
+        rect.setTheT(rint(0));
+        roi.addShape(rect)
+        roi.setImage(img)
+        roi  = owner.sf.getUpdateService().saveAndReturnObject(roi)
+        
+        scriptParams = {"IDs": rlist(rlong(img.id.val)),"Data_Type": rstring("Image")}
+        results = runScript(member,script,scriptParams)
+        
+        self.assertTrue( "File_Annotation" in results)
+        fileAnnotation = results["File_Annotation"]
+        # Add test for unlinked annotation
+        self.assertTrue(True,False)
+    assign(f, script, "SharedImageWithROI")
+    
+make_test_invalidID("Movie_Figure")
+make_test_invalidID("Movie_ROI_Figure")
+make_test_invalidID("ROI_Split_Figure")
+make_test_invalidID("Split_View_Figure")
+make_test_invalidID("Thumbnail_Figure")
+make_test_simpleImage("Movie_Figure",True)
+make_test_simpleImage("Movie_ROI_Figure",False)
+make_test_simpleImage("ROI_Split_Figure",False)
+make_test_simpleImage("Split_View_Figure",True)
+make_test_simpleImage("Thumbnail_Figure",True)
+make_test_simpleImageWithROI("Movie_ROI_Figure")
+make_test_simpleImageWithROI("ROI_Split_Figure")
+make_test_sharedImageWithROI("Movie_Figure")
+make_test_sharedImageWithROI("Movie_ROI_Figure")
+make_test_sharedImageWithROI("ROI_Split_Figure")
+make_test_sharedImageWithROI("Split_View_Figure")
+make_test_sharedImageWithROI("Thumbnail_Figure")
+
 if __name__ == '__main__':
     unittest.main()
