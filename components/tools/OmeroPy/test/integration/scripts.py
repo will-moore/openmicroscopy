@@ -544,8 +544,12 @@ def make_test_sharedImageWithROI(script, *args):
         
         self.assertTrue( "File_Annotation" in results)
         fileAnnotation = results["File_Annotation"]
-        # Add test for unlinked annotation
-        self.assertTrue(True,False)
+        
+        # Test unlinked annotation
+        from omero.gateway import ImageWrapper, BlitzGateway
+        conn = BlitzGateway(client_obj = member)
+        faWrapper = conn.getObject("FileAnnotation", fileAnnotation.val.id.val)
+        self.assertFalse(sum(1 for i in faWrapper.getParentLinks("Image"))>0)
     assign(f, script, "SharedImageWithROI")
     
 make_test_invalidID("Movie_Figure")
