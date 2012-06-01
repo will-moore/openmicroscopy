@@ -22,6 +22,8 @@ import omero.cli
 from omero.rtypes import *
 from omero.util.temp_files import create_path
 
+from omero.gateway import ImageWrapper, BlitzGateway
+
 PUBLIC = omero.model.PermissionsI("rwrwrw")
 
 thumbnailFigurePath = "scripts/omero/figure_scripts/thumbnailFigure.py"
@@ -442,6 +444,176 @@ client.closeSession()
             self.assertEquals(0, results["gid"].val)
         finally:
             impl.cleanup()
+
+def assign(f, script, testName=""):
+    name = "test%s%s%s" % (testName, script[0].upper(), script[1:])
+    f.func_name = name
+    setattr(TestScripts, name, f)
+
+def runScript(client, scriptType, scriptName, scriptParams):
+    results = None
+    try:
+        scriptService = client.sf.getScriptService()
+        scriptID = scriptService.getScriptID("/omero/" + scriptType + "_scripts/" + scriptName + ".py")
+        process = scriptService.runScript(scriptID, scriptParams, None)
+        
+        cb = omero.scripts.ProcessCallbackI(client, process)
+        while not cb.block(1000): # ms.
+            pass
+            cb.close()
+        
+        results = process.getResults(0)    # ms
+    finally:
+        process.close(False)
+        return results
+    
+def testFileAnnotation(self, results, hasFileAnnotation=True, parentType="Image", isLinked=True, client=None):
+    if hasFileAnnotation:
+        self.assertTrue( "File_Annotation" in results)
+        fileAnnotation = results["File_Annotation"]
+        self.assertTrue(fileAnnotation.val._file._size._val>0)
+        
+        if client is None: client = self.client
+        conn = BlitzGateway(client_obj = client)
+        faWrapper = conn.getObject("FileAnnotation", fileAnnotation.val.id.val)
+        if isLinked:
+            self.assertEqual(sum(1 for i in faWrapper.getParentLinks(parentType)),1)
+        else:
+            self.assertEqual(sum(1 for i in faWrapper.getParentLinks(parentType)),0)
+    else:
+        self.assertFalse("File_Annotation" in results)
+
+def make_test_invalidID(scriptType, scriptName):
+    def f(self):
+        scriptParams = {"IDs": rlist(rlong(-1)),"Data_Type": rstring("Image")}
+        results = runScript(self.client, scriptType, scriptName, scriptParams)
+        testFileAnnotation(self, results, hasFileAnnotation=False)
+    assign(f, scriptName, "InvalidID")
+    
+def make_test_simpleImage(scriptType, scriptName, hasFileAnnotation):
+    def f(self):
+        # Create test image
+        img = self.createTestImage(session=self.client.sf)
+        img = self.update.saveAndReturnObject(img)
+        
+        scriptParams = {"IDs": rlist(rlong(img.id.val)),"Data_Type": rstring("Image")}
+        results = runScript(self.client, scriptType, scriptName, scriptParams)
+        
+        testFileAnnotation(self, results, hasFileAnnotation)
+    assign(f, scriptName, "SimpleImage")
+
+def make_test_emptyDataset(scriptType, scriptName):
+    def f(self):
+        # Create dataset
+        dataset = omero.model.DatasetI()
+        dataset.setName(rstring("d"))
+        dataset = self.update.saveAndReturnObject(dataset)
+        
+        scriptParams = {"IDs": rlist(rlong(dataset.id.val)),"Data_Type": rstring("Dataset")}
+        results = runScript(self.client, scriptType, scriptName, scriptParams)
+
+        testFileAnnotation(self, results, hasFileAnnotation=False)
+    assign(f, scriptName, "EmptyDataset")
+    
+def make_test_simpleDataset(scriptType, scriptName):
+    def f(self):
+        # Create test image
+        img = self.createTestImage(session=self.client.sf)
+        img = self.update.saveAndReturnObject(img)
+        
+        # Create dataset and link image
+        dataset = omero.model.DatasetI()
+        dataset.setName(rstring("d"))
+        dataset = self.update.saveAndReturnObject(dataset)
+        dlink = omero.model.DatasetImageLinkI()
+        dlink.parent = omero.model.DatasetI(dataset.id.val, False)
+        dlink.child = omero.model.ImageI(img.id.val, False)
+        self.update.saveAndReturnObject(dlink)
+        
+        scriptParams = {"IDs": rlist(rlong(dataset.id.val)),"Data_Type": rstring("Dataset")}
+        results = runScript(self.client, scriptType, scriptName, scriptParams)
+        
+        testFileAnnotation(self, results, hasFileAnnotation=True, parentType="Dataset")
+    assign(f, scriptName, "SimpleDataset")
+
+def make_test_simpleImageWithROI(scriptType, scriptName):
+    def f(self):
+        # Create test image
+        img = self.createTestImage(session=self.client.sf)
+        img = self.update.saveAndReturnObject(img)
+
+        # Create ROI
+        roi = omero.model.RoiI()
+        rect = omero.model.RectI()
+        rect.setX(rdouble(10));
+        rect.setY(rdouble(10));
+        rect.setWidth(rdouble(10));
+        rect.setHeight(rdouble(10));
+        rect.setTheZ(rint(0));
+        rect.setTheT(rint(0));
+        roi.addShape(rect)
+        roi.setImage(img)
+        roi  = self.update.saveAndReturnObject(roi)
+        
+        scriptParams = {"IDs": rlist(rlong(img.id.val)),"Data_Type": rstring("Image")}
+        results = runScript(self.client, scriptType, scriptName, scriptParams)
+
+        testFileAnnotation(self, results, hasFileAnnotation=True)
+    assign(f, scriptName, "SimpleImageWithROI")
+    
+def make_test_sharedImageWithROI(scriptType, scriptName):
+    def f(self):
+        # Create read only group with two member
+        group = self.new_group(perms="rwr---")
+        owner = self.new_client(group=group) # Owner of share
+        member = self.new_client(group=group) # Member of group
+        
+        # Create image and ROI owned by owner
+        img = self.createTestImage(session=owner.sf)
+        img = owner.sf.getUpdateService().saveAndReturnObject(img)
+          
+        roi = omero.model.RoiI()
+        rect = omero.model.RectI()
+        rect.setX(rdouble(10));
+        rect.setY(rdouble(10));
+        rect.setWidth(rdouble(10));
+        rect.setHeight(rdouble(10));
+        rect.setTheZ(rint(0));
+        rect.setTheT(rint(0));
+        roi.addShape(rect)
+        roi.setImage(img)
+        roi  = owner.sf.getUpdateService().saveAndReturnObject(roi)
+        
+        scriptParams = {"IDs": rlist(rlong(img.id.val)),"Data_Type": rstring("Image")}
+        results = runScript(member, scriptType, scriptName, scriptParams)
+        
+        testFileAnnotation(self, results, hasFileAnnotation=True, isLinked=False, client=member)
+    assign(f, scriptName, "SharedImageWithROI")
+
+make_test_invalidID("figure","Movie_Figure")
+make_test_invalidID("figure","Movie_ROI_Figure")
+make_test_invalidID("figure","ROI_Split_Figure")
+make_test_invalidID("figure","Split_View_Figure")
+make_test_invalidID("figure","Thumbnail_Figure")
+make_test_invalidID("export","Batch_Image_Export")
+make_test_simpleImage("figure","Movie_Figure",True)
+make_test_simpleImage("figure","Movie_ROI_Figure",False)
+make_test_simpleImage("figure","ROI_Split_Figure",False)
+make_test_simpleImage("figure","Split_View_Figure",True)
+make_test_simpleImage("figure","Thumbnail_Figure",True)
+make_test_simpleImage("export","Batch_Image_Export",True)
+make_test_simpleImageWithROI("figure","Movie_ROI_Figure")
+make_test_simpleImageWithROI("figure","ROI_Split_Figure")
+make_test_sharedImageWithROI("figure","Movie_Figure")
+make_test_sharedImageWithROI("figure","Movie_ROI_Figure")
+make_test_sharedImageWithROI("figure","ROI_Split_Figure")
+make_test_sharedImageWithROI("figure","Split_View_Figure")
+make_test_sharedImageWithROI("figure","Thumbnail_Figure")
+make_test_sharedImageWithROI("export","Batch_Image_Export")
+make_test_emptyDataset("figure","Thumbnail_Figure")
+make_test_emptyDataset("export","Batch_Image_Export")
+make_test_simpleDataset("figure","Thumbnail_Figure")
+make_test_simpleDataset("export","Batch_Image_Export")
 
 if __name__ == '__main__':
     unittest.main()
