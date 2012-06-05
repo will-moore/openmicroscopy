@@ -404,10 +404,13 @@ def writeMovie(commandArgs, conn):
     log("")
     message=""
     
-    omeroImage = conn.getObject("Image",commandArgs["Image_ID"])
-    if not omeroImage:
-        message += "No image found. "
+    # Get the images
+    images, logMessage = scriptUtil.getObjects(conn, commandArgs)
+    message += logMessage
+    if not images:
         return None, message
+    omeroImage = images[0] # Get the first valid image (should be expanded to process the list)
+        
     pixels = omeroImage.getPrimaryPixels();
     pixelsId = pixels.getId()
 
@@ -529,9 +532,12 @@ def runAsScript():
     ckeys = ckeys;
     ckeys.sort()
     cOptions = wrap(ckeys)
+    dataTypes= [rstring("Image")]
     
     client = scripts.client('Make_Movie','MakeMovie creates a movie of the image and attaches it to the originating image.',
-    scripts.Long("Image_ID", description="The Image Identifier.", optional=False, grouping="1"),
+    scripts.String("Data_Type", optional=False, grouping="1",
+         description="Choose Images via their 'Dataset' or directly by 'Image' IDs.", values=dataTypes, default="Image"),
+    scripts.List("IDs", optional=False, grouping="1.1", description="List of Image IDs to process.").ofType(rlong(0)),
     scripts.String("Movie_Name", description="The name of the movie", grouping="2"),
     scripts.Int("Z_Start", description="Projection range (if not specified, use defaultZ only - no projection)", min=0, default=0, grouping="3.1"),
     scripts.Int("Z_End", description="Projection range (if not specified or, use defaultZ only - no projection)", min=0, grouping="3.2"),
