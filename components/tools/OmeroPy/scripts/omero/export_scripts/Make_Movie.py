@@ -192,9 +192,9 @@ def addPlaneInfo(z, t, pixels, image, colour):
 def addTimePoints(time, pixels, image, colour):
     """ Displays the time-points. """
     draw = ImageDraw.Draw(image)
-    textY = pixels.getSizeY().getValue()-45
+    textY = pixels.getSizeY()-45
     textX = 20
-    if(textY<=0 or textX > pixels.getSizeX().getValue() or textY>pixels.getSizeY().getValue()):
+    if(textY<=0 or textX > pixels.getSizeX() or textY>pixels.getSizeY()):
         return image
     draw.text((textX, textY), str(time), fill=colour)
     return image
