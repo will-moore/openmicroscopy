@@ -134,16 +134,13 @@ $(function() {
         */
         var inst = data.instance;
 
-        // Introspect the URL to get the show parameter
-        var param = OME.getURLParameter('show');
-        if (!param) {
+        // Global variable specifies what to select
+        var nodeIds = WEBCLIENT.initially_select;
+        if (nodeIds.length === 0) {
             // If not found, just select root node
             inst.select_node('ul > li:first');
         } else {
-            // Gather data for request
-            // Might have multiple objects separated by |
-            // We just use the first
-            var nodeIds = param.split('|');
+            // We load hierachy for first item...
             var paramSplit = nodeIds[0].split('-');
 
             var payload = {};
